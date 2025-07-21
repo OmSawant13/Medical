@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeFakeAI - Intelligent Fact Checker</title>
+    <style>
+         :root {
+            --bg-dark: #151515;
+            --bg-light: #1c1c1c;
+            --accent-primary: #c9a87c;
+            /* Rich gold */
+            --accent-secondary: #8b7355;
+            /* Bronzed brown */
+            --text-primary: #f5f5f5;
+            --text-secondary: #a3a3a3;
+            --gradient-premium: linear-gradient(135deg, #c9a87c 0%, #8b7355 100%);
+            --gradient-dark: linear-gradient(135deg, #151515 0%, #1c1c1c 100%);
+            --gradient-card: linear-gradient(135deg, rgba(28, 28, 28, 0.9) 0%, rgba(21, 21, 21, 0.9) 100%);
+            --success: #739181;
+            --error: #8d6262;
+            --warning: #a89064;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        body {
+            background: var(--gradient-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: rgba(21, 21, 21, 0.98);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(201, 168, 124, 0.1);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            text-decoration: none;
+            color: var(--accent-primary);
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        
+        .logo img {
+            width: 40px;
+            height: 40px;
+        }
+        
+        .chat-container {
+            flex: 1;
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+            width: 100%;
+            display: flex;
+            gap: 2rem;
+        }
+        /* Chat History Sidebar */
+        
+        .chat-history {
+            width: 300px;
+            background: var(--gradient-card);
+            border: 1px solid rgba(201, 168, 124, 0.1);
+            border-radius: 20px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 180px);
+        }
+        
+        .history-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(201, 168, 124, 0.1);
+            background: rgba(21, 21, 21, 0.98);
+        }
+        
+        .history-header h3 {
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .new-chat-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--gradient-premium);
+            border: 1px solid rgba(201, 168, 124, 0.3);
+            color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            font-size: 0.9rem;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(201, 168, 124, 0.2);
+        }
+        
+        .new-chat-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(201, 168, 124, 0.3);
+        }
+        
+        .chat-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+        
+        .chat-item {
+            padding: 1rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+            margin-bottom: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .chat-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--gradient-premium);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 0;
+        }
+        
+        .chat-item:hover::before {
+            opacity: 0.1;
+        }
+        
+        .chat-item.active {
+            background: rgba(201, 168, 124, 0.1);
+            border-color: rgba(201, 168, 124, 0.2);
+        }
+        
+        .chat-item-title {
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .chat-item-preview {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            opacity: 0.8;
+            position: relative;
+            z-index: 1;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .chat-item-time {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+        /* Main Chat Box */
+        
+        .chat-box {
+            flex: 1;
+            max-width: 800px;
+            background: var(--gradient-card);
+            border: 1px solid rgba(201, 168, 124, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+            height: calc(100vh - 180px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+        
+        .chat-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(201, 168, 124, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .chat-header-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-premium);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        
+        .chat-header-text h2 {
+            font-size: 1.2rem;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+        
+        .chat-header-text p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+        
+        .message {
+            margin-bottom: 1.5rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeIn 0.3s forwards;
+        }
+        
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message-content {
+            display: inline-block;
+            padding: 1rem 1.5rem;
+            border-radius: 16px;
+            max-width: 80%;
+            line-height: 1.5;
+        }
+        
+        .message.bot {
+            display: flex;
+            justify-content: flex-start;
+        }
+        
+        .message.user {
+            display: flex;
+            justify-content: flex-end;
+        }
+        
+        .message.bot .message-content {
+            background: var(--gradient-premium);
+            color: var(--text-primary);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .message.user .message-content {
+            background: rgba(28, 28, 28, 0.95);
+            border: 1px solid rgba(201, 168, 124, 0.1);
+            color: var(--text-primary);
+        }
+        
+        .verification-result {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 12px;
+            border-left: 4px solid;
+        }
+        
+        .verification-result.true {
+            background: rgba(115, 145, 129, 0.1);
+            border-color: var(--success);
+            color: var(--success);
+        }
+        
+        .verification-result.false {
+            background: rgba(141, 98, 98, 0.1);
+            border-color: var(--error);
+            color: var(--error);
+        }
+        
+        .related-sources {
+            margin-top: 1rem;
+            background: rgba(28, 28, 28, 0.5);
+            border-radius: 12px;
+            padding: 1rem;
+        }
+        
+        .related-sources h4 {
+            color: var(--accent-primary);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .source-item {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .chat-input-container {
+            padding: 1.5rem;
+            border-top: 1px solid rgba(201, 168, 124, 0.1);
+            background: rgba(21, 21, 21, 0.5);
+        }
+        
+        .chat-input-wrapper {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+        }
+        
+        .chat-input {
+            flex: 1;
+            background: rgba(28, 28, 28, 0.95);
+            border: 1px solid rgba(201, 168, 124, 0.2);
+            border-radius: 16px;
+            padding: 1rem 1.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+            resize: none;
+            min-height: 60px;
+            max-height: 120px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 20px rgba(201, 168, 124, 0.1), inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .send-button {
+            background: var(--gradient-premium);
+            border: 1px solid rgba(201, 168, 124, 0.3);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(201, 168, 124, 0.2);
+        }
+        
+        .send-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(201, 168, 124, 0.3);
+        }
+        
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            padding-left: 1rem;
+        }
+        
+        .typing-dots {
+            display: flex;
+            gap: 3px;
+        }
+        
+        .typing-dots span {
+            width: 4px;
+            height: 4px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            animation: typingDots 1.4s infinite;
+        }
+        
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typingDots {
+            0%,
+            60%,
+            100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-4px);
+            }
+        }
+        /* Scrollbar Styling */
+        
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-track {
+            background: rgba(28, 28, 28, 0.5);
+        }
+        
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: rgba(201, 168, 124, 0.3);
+            border-radius: 3px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: rgba(201, 168, 124, 0.5);
+        }
+        
+        @media (max-width: 1024px) {
+            .chat-history {
+                width: 250px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .chat-container {
+                padding: 1rem;
+                margin: 1rem auto;
+                flex-direction: column;
+            }
+            .chat-history {
+                width: 100%;
+                height: auto;
+                max-height: 300px;
+            }
+            .chat-box {
+                height: calc(100vh - 480px);
+            }
+            .message-content {
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <a href="index.html" class="logo">
+            <div class="logo-icon">
+                <img src="/Users/omsawant/Downloads/ChatGPT Image Jul 19, 2025, 04_13_00 PM.png" alt="DeFakeAI Logo" />
+            </div>
+            DeFakeAI
+        </a>
+    </header>
+
+    <main class="chat-container">
+        <!-- Chat History Sidebar -->
+        <div class="chat-history">
+            <div class="history-header">
+                <h3>Chat History</h3>
+                <button class="new-chat-btn">
+                    <span>+</span>
+                    New Chat
+                </button>
+            </div>
+            <div class="chat-list" id="chatList">
+                <div class="chat-item active">
+                    <div class="chat-item-title">Fact Check: Climate Change Report</div>
+                    <div class="chat-item-preview">Analyzing the latest IPCC report on global warming trends...</div>
+                    <div class="chat-item-time">2 hours ago</div>
+                </div>
+                <div class="chat-item">
+                    <div class="chat-item-title">COVID-19 Vaccine Efficacy</div>
+                    <div class="chat-item-preview">Verification of vaccine effectiveness statistics...</div>
+                    <div class="chat-item-time">Yesterday</div>
+                </div>
+                <div class="chat-item">
+                    <div class="chat-item-title">Economic Policy Analysis</div>
+                    <div class="chat-item-preview">Fact-checking claims about recent economic measures...</div>
+                    <div class="chat-item-time">2 days ago</div>
+                </div>
+                <div class="chat-item">
+                    <div class="chat-item-title">Technology News Verification</div>
+                    <div class="chat-item-preview">Analyzing claims about AI advancement...</div>
+                    <div class="chat-item-time">3 days ago</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="chat-box">
+            <div class="chat-header">
+                <div class="chat-header-icon">🤖</div>
+                <div class="chat-header-text">
+                    <h2>AI Fact Checker</h2>
+                    <p>Ask me to verify any news or claim</p>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+                <!-- Initial welcome message -->
+                <div class="message bot">
+                    <div class="message-content">
+                        👋 Welcome! I'm your AI fact-checking assistant. Share any news, statement, or claim you'd like me to verify, and I'll analyze it using our extensive database and real-time verification system.
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-input-container">
+                <div class="chat-input-wrapper">
+                    <textarea id="chatInput" class="chat-input" placeholder="Enter a statement to verify..." rows="1"></textarea>
+                    <button id="sendButton" class="send-button">➤</button>
+                </div>
+                <div class="typing-indicator" id="typingIndicator">
+                    <span>AI is analyzing</span>
+                    <div class="typing-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        class ChatBot {
+            constructor() {
+                this.chatMessages = document.getElementById('chatMessages');
+                this.chatInput = document.getElementById('chatInput');
+                this.sendButton = document.getElementById('sendButton');
+                this.typingIndicator = document.getElementById('typingIndicator');
+
+                this.setupEventListeners();
+                this.adjustTextareaHeight();
+            }
+
+            setupEventListeners() {
+                this.sendButton.addEventListener('click', () => this.handleSend());
+
+                this.chatInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.handleSend();
+                    }
+                });
+
+                this.chatInput.addEventListener('input', () => this.adjustTextareaHeight());
+            }
+
+            adjustTextareaHeight() {
+                this.chatInput.style.height = 'auto';
+                this.chatInput.style.height = Math.min(this.chatInput.scrollHeight, 120) + 'px';
+            }
+
+            async handleSend() {
+                const message = this.chatInput.value.trim();
+                if (!message) return;
+
+                // Add user message
+                this.addMessage(message, 'user');
+
+                // Clear input and reset height
+                this.chatInput.value = '';
+                this.adjustTextareaHeight();
+
+                // Show typing indicator
+                this.typingIndicator.style.display = 'flex';
+
+                // Simulate AI response (replace with actual API call later)
+                await this.simulateResponse(message);
+
+                // Hide typing indicator
+                this.typingIndicator.style.display = 'none';
+            }
+
+            addMessage(content, type, extras = {}) {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = `message ${type}`;
+
+                    let messageContent = `<div class="message-content">${this.escapeHtml(content)}</div>`;
+
+                    // Add verification result if provided
+                    if (extras.verification) {
+                        messageContent += `
+                        <div class="verification-result ${extras.verification.status}">
+                            <strong>${extras.verification.result}</strong>
+                            <p>${extras.verification.explanation}</p>
+                        </div>
+                    `;
+                    }
+
+                    // Add related sources if provided
+                    if (extras.sources) {
+                        messageContent += `
+                        <div class="related-sources">
+                            <h4>Related Sources:</h4>
+                            ${extras.sources.map(source => `
+                                <div class="source-item">
+                                    • ${source.title} (${source.publisher}, ${source.year})
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+
+                messageDiv.innerHTML = messageContent;
+                this.chatMessages.appendChild(messageDiv);
+                this.scrollToBottom();
+            }
+
+            async simulateResponse(userMessage) {
+                // Simulate API processing time
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                // Example response (replace with actual API response later)
+                const response = {
+                    message: "Based on my analysis, I can provide the following verification:",
+                    verification: {
+                        status: Math.random() > 0.5 ? 'true' : 'false',
+                        result: Math.random() > 0.5 ? 'Verified' : 'Not Verified',
+                        explanation: "This conclusion is based on cross-referencing with multiple reliable sources and fact-checking databases."
+                    },
+                    sources: [
+                        {
+                            title: "Comprehensive Study on the Topic",
+                            publisher: "Reuters",
+                            year: "2023"
+                        },
+                        {
+                            title: "Fact-Check Analysis",
+                            publisher: "Associated Press",
+                            year: "2023"
+                        }
+                    ]
+                };
+
+                this.addMessage(
+                    response.message,
+                    'bot',
+                    {
+                        verification: response.verification,
+                        sources: response.sources
+                    }
+                );
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            scrollToBottom() {
+                this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+            }
+        }
+
+        // Add new chat history functionality
+        class ChatHistory {
+            constructor() {
+                this.chatList = document.getElementById('chatList');
+                this.newChatBtn = document.querySelector('.new-chat-btn');
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                this.newChatBtn.addEventListener('click', () => this.createNewChat());
+                
+                // Add click handlers for chat items
+                document.querySelectorAll('.chat-item').forEach(item => {
+                    item.addEventListener('click', () => this.selectChat(item));
+                });
+            }
+
+            createNewChat() {
+                const chatItem = document.createElement('div');
+                chatItem.className = 'chat-item';
+                chatItem.innerHTML = `
+                    <div class="chat-item-title">New Conversation</div>
+                    <div class="chat-item-preview">Start a new fact-checking session...</div>
+                    <div class="chat-item-time">Just now</div>
+                `;
+
+                chatItem.addEventListener('click', () => this.selectChat(chatItem));
+                
+                // Add to top of list
+                this.chatList.insertBefore(chatItem, this.chatList.firstChild);
+                
+                // Select the new chat
+                this.selectChat(chatItem);
+            }
+
+            selectChat(chatItem) {
+                // Remove active class from all items
+                document.querySelectorAll('.chat-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                // Add active class to selected item
+                chatItem.classList.add('active');
+                
+                // Clear chat messages (you can modify this to load actual chat history)
+                document.getElementById('chatMessages').innerHTML = `
+                    <div class="message bot">
+                        <div class="message-content">
+                            👋 Welcome! I'm your AI fact-checking assistant. Share any news, statement, or claim you'd like me to verify.
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize both ChatBot and ChatHistory when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new ChatBot();
+            new ChatHistory();
+        });
+    </script>
+</body>
+
+</html>

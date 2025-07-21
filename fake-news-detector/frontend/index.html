@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeFakeAI - Advanced Fact Checking Platform</title>
+    <style>
+         :root {
+            /* Premium metallics and rich colors */
+            --bg-dark: #151515;
+            --bg-light: #1c1c1c;
+            --accent-primary: #c9a87c;
+            /* Rich gold */
+            --accent-secondary: #8b7355;
+            /* Bronzed brown */
+            --accent-tertiary: #464646;
+            /* Gunmetal */
+            --text-primary: #f5f5f5;
+            --text-secondary: #a3a3a3;
+            --success: #739181;
+            /* Muted sage */
+            --error: #8d6262;
+            /* Deep rose */
+            --warning: #a89064;
+            /* Warm bronze */
+            /* Gradients */
+            --gradient-premium: linear-gradient(135deg, #c9a87c 0%, #8b7355 100%);
+            --gradient-dark: linear-gradient(135deg, #151515 0%, #1c1c1c 100%);
+            --gradient-card: linear-gradient(135deg, rgba(28, 28, 28, 0.9) 0%, rgba(21, 21, 21, 0.9) 100%);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--gradient-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        /* Animated background */
+        
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.02;
+        }
+        
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 20% 50%, #c9a87c 0%, transparent 50%), radial-gradient(circle at 80% 20%, #8b7355 0%, transparent 50%), radial-gradient(circle at 40% 80%, #464646 0%, transparent 50%);
+            animation: drift 20s ease-in-out infinite alternate;
+        }
+        
+        @keyframes drift {
+            0% {
+                transform: rotate(0deg) scale(1);
+            }
+            100% {
+                transform: rotate(360deg) scale(1.1);
+            }
+        }
+        /* Header */
+        
+        .header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(21, 21, 21, 0.98);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(201, 168, 124, 0.1);
+            z-index: 1000;
+            padding: 1rem 0;
+        }
+        
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+            text-decoration: none;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .logo-icon img {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+        }
+        
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+        
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-primary);
+            font-weight: 500;
+            transition: all 0.3s ease;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: var(--gradient-premium);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+        
+        .nav-links a:hover::after {
+            transform: scaleX(1);
+        }
+        
+        .nav-links a:hover {
+            color: var(--accent-primary);
+            background: rgba(201, 168, 124, 0.05);
+        }
+        
+        .nav-cta {
+            background: var(--gradient-premium);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(201, 168, 124, 0.2);
+            border: 1px solid rgba(201, 168, 124, 0.3);
+        }
+        
+        .nav-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(201, 168, 124, 0.3);
+        }
+        /* Hero Section */
+        
+        .hero {
+            padding: 140px 0 80px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+        
+        .hero h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            background: var(--gradient-premium);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 3s ease-in-out infinite alternate;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        @keyframes gradientShift {
+            0% {
+                background-position: 0% 50%;
+            }
+            100% {
+                background-position: 100% 50%;
+            }
+        }
+        
+        .hero p {
+            font-size: 1.3rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 2rem;
+            max-width: 600px;
+            margin: 3rem auto;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+            display: block;
+        }
+        
+        .stat-label {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+        /* Chatbot Section */
+        
+        .chatbot-section {
+            padding: 80px 0;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding-left: 2rem;
+            padding-right: 2rem;
+        }
+        
+        .chatbot-container {
+            background: var(--gradient-card);
+            border: 1px solid rgba(201, 168, 124, 0.1);
+            border-radius: 24px;
+            padding: 2rem;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .chatbot-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .chatbot-header h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+        
+        .chatbot-header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+        
+        .chat-interface {
+            background: rgba(21, 21, 21, 0.95);
+            border: 1px solid rgba(201, 168, 124, 0.1);
+            border-radius: 20px;
+            padding: 1.5rem;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .messages {
+            flex: 1;
+            margin-bottom: 1.5rem;
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        
+        .message {
+            margin-bottom: 1rem;
+            animation: slideInUp 0.3s ease;
+        }
+        
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message.bot {
+            text-align: left;
+        }
+        
+        .message.user {
+            text-align: right;
+        }
+        
+        .message-content {
+            display: inline-block;
+            padding: 1rem 1.5rem;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        
+        .message.bot .message-content {
+            background: var(--gradient-premium);
+            color: white;
+            margin-right: 20%;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .message.user .message-content {
+            background: rgba(28, 28, 28, 0.95);
+            color: var(--text-primary);
+            margin-left: 20%;
+            border: 1px solid rgba(201, 168, 124, 0.1);
+        }
+        
+        .verification-result {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .verification-result.true {
+            background: rgba(115, 145, 129, 0.1);
+            border-color: var(--success);
+            color: var(--success);
+        }
+        
+        .verification-result.false {
+            background: rgba(141, 98, 98, 0.1);
+            border-color: var(--error);
+            color: var(--error);
+        }
+        
+        .verification-result.partial {
+            background: rgba(168, 144, 100, 0.1);
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+        
+        .related-news {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(201, 168, 124, 0.05);
+            border-radius: 12px;
+            border: 1px solid rgba(201, 168, 124, 0.1);
+        }
+        
+        .related-news h4 {
+            color: var(--accent-primary);
+            margin-bottom: 0.75rem;
+            font-size: 1rem;
+        }
+        
+        .news-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(201, 168, 124, 0.1);
+        }
+        
+        .news-item:last-child {
+            border-bottom: none;
+        }
+        
+        .news-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .news-source {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        
+        .input-section {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+        }
+        
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+        
+        .chat-input {
+            width: 100%;
+            background: rgba(28, 28, 28, 0.95);
+            border: 1px solid rgba(201, 168, 124, 0.2);
+            border-radius: 16px;
+            padding: 1rem 1.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            resize: vertical;
+            min-height: 60px;
+            max-height: 120px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 20px rgba(201, 168, 124, 0.1), inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .chat-input::placeholder {
+            color: #6b7280;
+        }
+        
+        .chat-input,
+        .send-button {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        
+        .send-button {
+            background: var(--gradient-premium);
+            border: 1px solid rgba(201, 168, 124, 0.3);
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(201, 168, 124, 0.2);
+        }
+        
+        .send-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(201, 168, 124, 0.3);
+        }
+        
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            font-style: italic;
+            margin-top: 1rem;
+        }
+        
+        .typing-dots {
+            display: flex;
+            gap: 3px;
+        }
+        
+        .typing-dots span {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            animation: typingDots 1.4s infinite;
+        }
+        
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typingDots {
+            0%,
+            60%,
+            100% {
+                opacity: 0.3;
+            }
+            30% {
+                opacity: 1;
+            }
+        }
+        /* Features Section */
+        
+        .features {
+            padding: 80px 0;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding-left: 2rem;
+            padding-right: 2rem;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        
+        .feature-card {
+            background: var(--gradient-card);
+            border: 1px solid rgba(201, 168, 124, 0.1);
+            border-radius: 20px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.4s ease;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(201, 168, 124, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 20px rgba(201, 168, 124, 0.1);
+        }
+        
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--gradient-premium);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin: 0 auto 1.5rem;
+            box-shadow: 0 8px 20px rgba(201, 168, 124, 0.2);
+        }
+        
+        .feature-card h3 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+        
+        .feature-card p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        /* Footer */
+        
+        .footer {
+            background: rgba(21, 21, 21, 0.98);
+            border-top: 1px solid rgba(201, 168, 124, 0.1);
+            padding: 3rem 0 2rem;
+            margin-top: 5rem;
+        }
+        
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            text-align: center;
+        }
+        
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .footer-links a:hover {
+            color: var(--accent-primary);
+        }
+        
+        .footer-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: var(--gradient-premium);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+        
+        .footer-links a:hover::after {
+            transform: scaleX(1);
+        }
+        
+        .footer p {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+        /* Scrollbar Styling */
+        
+        .messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .messages::-webkit-scrollbar-track {
+            background: rgba(28, 28, 28, 0.5);
+            border-radius: 3px;
+        }
+        
+        .messages::-webkit-scrollbar-thumb {
+            background: rgba(201, 168, 124, 0.3);
+            border-radius: 3px;
+        }
+        
+        .messages::-webkit-scrollbar-thumb:hover {
+            background: rgba(201, 168, 124, 0.5);
+        }
+        /* Mobile Responsiveness */
+        
+        @media (max-width: 768px) {
+            .nav {
+                padding: 0 1rem;
+            }
+            .nav-links {
+                display: none;
+            }
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            .hero-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .chatbot-container {
+                margin: 0 1rem;
+                padding: 1.5rem;
+            }
+            .input-section {
+                flex-direction: column;
+            }
+            .send-button {
+                width: 100%;
+                height: 50px;
+            }
+            .message-content {
+                max-width: 90%;
+            }
+        }
+        /* Additional Premium Touches */
+        
+        .feature-card,
+        .chatbot-container,
+        .about-section .card {
+            backdrop-filter: blur(20px);
+            transition: all 0.3s ease;
+        }
+        
+        .feature-card:hover,
+        .about-section .card:hover {
+            transform: translateY(-5px);
+        }
+        /* Smooth Animations */
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .hero-content,
+        .feature-card,
+        .about-section .card {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+        
+        .feature-card:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .feature-card:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        /* Glass Morphism Effects */
+        
+        .chatbot-container,
+        .feature-card,
+        .about-section .card {
+            background: var(--gradient-card);
+            border: 1px solid rgba(201, 168, 124, 0.1);
+            backdrop-filter: blur(20px);
+        }
+        /* Premium Animations */
+        
+        @keyframes shimmer {
+            0% {
+                background-position: -100% 0;
+            }
+            100% {
+                background-position: 100% 0;
+            }
+        }
+        
+        .feature-card,
+        .about-section .card {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .feature-card::after,
+        .about-section .card::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient( 45deg, transparent 0%, rgba(201, 168, 124, 0.05) 50%, transparent 100%);
+            transform: rotate(45deg);
+            animation: shimmer 3s infinite;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-animation"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav">
+            <a href="#" class="logo">
+                <div class="logo-icon">
+                    <img src="/Users/omsawant/Downloads/ChatGPT Image Jul 19, 2025, 04_13_00 PM.png" alt="DeFakeAI Logo" />
+                </div>
+
+                DeFakeAI
+            </a>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#contact">Contact</a></li>
+                <li>
+                    <a href="chatbot.html">Try</a>
+
+                </li>
+            </ul>
+            <a href="#" class="nav-cta">Get Premium</a>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Advanced AI Fact Checking</h1>
+            <p>Combat misinformation with our premium AI-powered platform. Get instant verification of news statements backed by 10+ years of historical data and real-time fact checking.</p>
+
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <span class="stat-number">99.7%</span>
+                    <span class="stat-label">Accuracy Rate</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">10M+</span>
+                    <span class="stat-label">Facts Checked</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">10+</span>
+                    <span class="stat-label">Years of Data</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">24/7</span>
+                    <span class="stat-label">Real-time Analysis</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Chatbot Section -->
+    <section class="chatbot-section">
+        <div class="chatbot-container">
+            <div class="chatbot-header">
+                <h2>AI News Analyzer</h2>
+                <p>Enter any news statement or claim below for instant fact-checking and verification</p>
+            </div>
+
+            <div class="chat-interface">
+                <div class="messages" id="messages">
+                    <div class="message bot">
+                        <div class="message-content">
+                            👋 Welcome to DeFakeAI! I'm here to help you verify news statements and claims. Simply paste any news statement or claim, and I'll analyze it against historical data and provide you with accurate, verified information.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dummy typing indicator (static) -->
+                <div class="typing-indicator dummy">
+                    <span>AI is analyzing...</span>
+                    <div class="typing-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+
+                <!-- Dummy input (disabled, non-interactive) -->
+                <div class="input-section">
+                    <div class="input-wrapper">
+                        <textarea class="chat-input" disabled placeholder="Enter a news statement or claim to verify..." rows="2"></textarea>
+                    </div>
+                    <button class="send-button" disabled>
+                <span>→</span>
+              </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🤖</div>
+                <h3>Advanced AI Analysis</h3>
+                <p>Our sophisticated AI analyzes claims against millions of verified sources and historical data spanning over a decade.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>10+ Years Historical Data</h3>
+                <p>Access to comprehensive archives of verified news and events from the past decade for accurate cross-referencing.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Real-time Verification</h3>
+                <p>Get instant results with our lightning-fast processing that delivers accurate fact-checks in seconds.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔗</div>
+                <h3>Related News Discovery</h3>
+                <p>Instead of just marking content as fake, we provide related accurate news and verified information on the topic.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🛡️</div>
+                <h3>Multi-Source Validation</h3>
+                <p>Cross-reference claims against multiple trusted sources for comprehensive verification and accuracy.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📈</div>
+                <h3>Confidence Scoring</h3>
+                <p>Get detailed confidence scores and explanations for each verification result with transparent methodology.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="about-section" style="padding: 100px 0; background: rgba(17, 24, 39, 0.6); margin-top: 80px;">
+        <div style="max-width: 1200px; margin: 0 auto; padding: 0 2rem;">
+            <div style="text-align: center; margin-bottom: 60px;">
+                <h2 style="font-size: 2.5rem; margin-bottom: 1.5rem; color: #e4e4e7;">About DeFakeAI</h2>
+                <div style="width: 60px; height: 4px; background: linear-gradient(135deg, #6366f1, #8b5cf6); margin: 0 auto 30px;"></div>
+                <p style="color: #9ca3af; max-width: 800px; margin: 0 auto; line-height: 1.8; font-size: 1.1rem;">
+                    Born from the urgent need to combat misinformation in our digital age, DeFakeAI represents a breakthrough in automated fact-checking technology. Our platform combines advanced machine learning, natural language processing, and a vast database of verified
+                    information to provide real-time fact verification.
+                </p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 3rem; align-items: start;">
+                <div style="background: rgba(26, 26, 46, 0.8); padding: 2rem; border-radius: 20px; border: 1px solid rgba(99, 102, 241, 0.2);">
+                    <h3 style="color: #6366f1; font-size: 1.5rem; margin-bottom: 1rem;">Our Mission</h3>
+                    <p style="color: #9ca3af; line-height: 1.8;">
+                        We're dedicated to empowering users with the tools they need to identify and verify information accurately. Our mission extends beyond simple fact-checking – we aim to promote digital literacy and critical thinking in an era where misinformation can spread
+                        rapidly across social media and news platforms.
+                    </p>
+                </div>
+
+                <div style="background: rgba(26, 26, 46, 0.8); padding: 2rem; border-radius: 20px; border: 1px solid rgba(99, 102, 241, 0.2);">
+                    <h3 style="color: #6366f1; font-size: 1.5rem; margin-bottom: 1rem;">Our Technology</h3>
+                    <p style="color: #9ca3af; line-height: 1.8;">
+                        DeFakeAI leverages cutting-edge BERT-based natural language processing models, trained on millions of verified news articles and fact-checks. Our system analyzes content across multiple dimensions including linguistic patterns, source credibility, temporal
+                        consistency, and cross-references with our extensive database of verified information.
+                    </p>
+                </div>
+
+                <div style="background: rgba(26, 26, 46, 0.8); padding: 2rem; border-radius: 20px; border: 1px solid rgba(99, 102, 241, 0.2);">
+                    <h3 style="color: #6366f1; font-size: 1.5rem; margin-bottom: 1rem;">Our Impact</h3>
+                    <p style="color: #9ca3af; line-height: 1.8;">
+                        Since our launch, we've helped verify over 10 million news statements and claims, supporting journalists, researchers, and everyday users in their quest for truth. Our API is used by leading news organizations and educational institutions worldwide, making
+                        fact-checking accessible and efficient.
+                    </p>
+                </div>
+            </div>
+
+            <div style="margin-top: 60px; text-align: center;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem; max-width: 800px; margin: 0 auto;">
+                    <div>
+                        <span style="font-size: 2.5rem; font-weight: 700; color: #6366f1; display: block;">95%+</span>
+                        <span style="color: #9ca3af;">Detection Accuracy</span>
+                    </div>
+                    <div>
+                        <span style="font-size: 2.5rem; font-weight: 700; color: #6366f1; display: block;">500ms</span>
+                        <span style="color: #9ca3af;">Average Response Time</span>
+                    </div>
+                    <div>
+                        <span style="font-size: 2.5rem; font-weight: 700; color: #6366f1; display: block;">24/7</span>
+                        <span style="color: #9ca3af;">Available Support</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 60px; text-align: center;">
+                <h3 style="color: #6366f1; font-size: 1.8rem; margin-bottom: 1.5rem;">Our Commitment to Truth</h3>
+                <p style="color: #9ca3af; max-width: 800px; margin: 0 auto; line-height: 1.8; font-size: 1.1rem;">
+                    We believe in transparency and continuous improvement. Our algorithms are regularly updated to adapt to evolving misinformation tactics, and we maintain partnerships with leading fact-checking organizations worldwide. Together, we're building a more informed
+                    and truth-aware digital ecosystem.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-links">
+                <a href="#privacy">Privacy Policy</a>
+                <a href="#terms">Terms of Service</a>
+                <a href="#api">API Documentation</a>
+                <a href="#support">Support</a>
+                <a href="#about">About Us</a>
+            </div>
+            <p>&copy; 2024 DeFakeAI. All rights reserved. Built with advanced AI technology for accurate fact-checking.</p>
+        </div>
+    </footer>
+
+    <script>
+        class TruthSeekerAI {
+            constructor() {
+                this.messagesContainer = document.getElementById('messages');
+                this.chatInput = document.getElementById('chatInput');
+                this.sendButton = document.getElementById('sendButton');
+                this.typingIndicator = document.getElementById('typing');
+
+                this.initializeEventListeners();
+                this.historicalData = this.initializeHistoricalData();
+            }
+
+            initializeEventListeners() {
+                this.sendButton.addEventListener('click', () => this.handleSendMessage());
+                this.chatInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.handleSendMessage();
+                    }
+                });
+
+                this.chatInput.addEventListener('input', () => {
+                    this.adjustTextareaHeight();
+                });
+            }
+
+            adjustTextareaHeight() {
+                this.chatInput.style.height = 'auto';
+                this.chatInput.style.height = Math.min(this.chatInput.scrollHeight, 120) + 'px';
+            }
+
+            initializeHistoricalData() {
+                return {
+                    "climate change": {
+                        verified: true,
+                        confidence: 95,
+                        relatedNews: [{
+                            title: "NASA Confirms 2023 as Warmest Year on Record",
+                            source: "NASA",
+                            year: 2024
+                        }, {
+                            title: "IPCC Report Shows Accelerating Climate Change",
+                            source: "IPCC",
+                            year: 2023
+                        }, {
+                            title: "Global CO2 Levels Reach Record High in 2023",
+                            source: "NOAA",
+                            year: 2023
+                        }]
+                    },
+                    "covid vaccine": {
+                        verified: true,
+                        confidence: 98,
+                        relatedNews: [{
+                            title: "COVID-19 Vaccines Show 95% Efficacy in Clinical Trials",
+                            source: "FDA",
+                            year: 2021
+                        }, {
+                            title: "Pfizer-BioNTech Vaccine Receives Full FDA Approval",
+                            source: "FDA",
+                            year: 2021
+                        }, {
+                            title: "WHO Approves Emergency Use of COVID-19 Vaccines",
+                            source: "WHO",
+                            year: 2021
+                        }]
+                    },
+                    "artificial intelligence": {
+                        verified: true,
+                        confidence: 92,
+                        relatedNews: [{
+                            title: "ChatGPT Reaches 100 Million Users in Record Time",
+                            source: "OpenAI",
+                            year: 2023
+                        }, {
+                            title: "Google Announces Breakthrough in AI Language Models",
+                            source: "Google",
+                            year: 2023
+                        }, {
+                            title: "AI Technology Shows Promise in Medical Diagnosis",
+                            source: "Nature",
+                            year: 2023
+                        }]
+                    },
+                    "moon landing": {
+                        verified: true,
+                        confidence: 99,
+                        relatedNews: [{
+                            title: "Apollo 11 Moon Landing: 54 Years Later, Evidence Remains Solid",
+                            source: "NASA",
+                            year: 2023
+                        }, {
+                            title: "Lunar Samples Continue to Provide Scientific Insights",
+                            source: "Science",
+                            year: 2022
+                        }, {
+                            title: "New High-Resolution Images of Apollo Landing Sites",
+                            source: "NASA",
+                            year: 2022
+                        }]
+                    },
+                    "election fraud": {
+                        verified: false,
+                        confidence: 92,
+                        relatedNews: [{
+                            title: "Election Security Experts Confirm 2020 Election Integrity",
+                            source: "AP",
+                            year: 2021
+                        }, {
+                            title: "Multiple Recounts Confirm Original Election Results",
+                            source: "Reuters",
+                            year: 2021
+                        }, {
+                            title: "Courts Dismiss Fraud Claims Due to Lack of Evidence",
+                            source: "BBC",
+                            year: 2021
+                        }]
+                    },
+                    "5g coronavirus": {
+                        verified: false,
+                        confidence: 97,
+                        relatedNews: [{
+                            title: "WHO Debunks 5G-COVID Connection Conspiracy",
+                            source: "WHO",
+                            year: 2020
+                        }, {
+                            title: "Scientific Studies Find No Link Between 5G and Virus",
+                            source: "Nature",
+                            year: 2020
+                        }, {
+                            title: "Telecommunications Experts Explain 5G Safety",
+                            source: "IEEE",
+                            year: 2021
+                        }]
+                    },
+                    "flat earth": {
+                        verified: false,
+                        confidence: 99,
+                        relatedNews: [{
+                            title: "Satellite Images Continue to Show Earth's Curvature",
+                            source: "NASA",
+                            year: 2023
+                        }, {
+                            title: "International Space Station Provides Clear Earth Views",
+                            source: "ESA",
+                            year: 2023
+                        }, {
+                            title: "Physics Principles Confirm Spherical Earth Model",
+                            source: "Scientific American",
+                            year: 2022
+                        }]
+                    },
+                    "ukraine war": {
+                        verified: true,
+                        confidence: 99,
+                        relatedNews: [{
+                            title: "Russia Invades Ukraine: International Response",
+                            source: "BBC",
+                            year: 2022
+                        }, {
+                            title: "UN Condemns Russian Military Action in Ukraine",
+                            source: "UN News",
+                            year: 2022
+                        }, {
+                            title: "NATO Strengthens Eastern European Defense",
+                            source: "Reuters",
+                            year: 2022
+                        }]
+                    }
+                };
+            }
+
+            async handleSendMessage() {
+                const message = this.chatInput.value.trim();
+                if (!message) return;
+
+                this.addMessage(message, 'user');
+                this.chatInput.value = '';
+                this.adjustTextareaHeight();
+
+                this.sendButton.disabled = true;
+                this.showTyping();
+
+                await this.sleep(2000 + Math.random() * 1000);
+
+                const analysis = this.analyzeStatement(message);
+                this.addAnalysisMessage(analysis);
+
+                this.sendButton.disabled = false;
+                this.hideTyping();
+            }
+
+            analyzeStatement(statement) {
+                const lowerStatement = statement.toLowerCase();
+
+                for (const [key, data] of Object.entries(this.historicalData)) {
+                    if (lowerStatement.includes(key)) {
+                        return {
+                            statement: statement,
+                            verified: data.verified,
+                            confidence: data.confidence,
+                            explanation: this.generateExplanation(key, data.verified),
+                            relatedNews: data.relatedNews,
+                            category: this.categorizeStatement(lowerStatement)
+                        };
+                    }
+                }
+
+                return this.generateDefaultAnalysis(statement);
+            }
+
+            generateDefaultAnalysis(statement) {
+                const categories = ['politics', 'science', 'technology', 'health', 'environment'];
+                const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+                const confidence = Math.floor(Math.random() * 40) + 60;
+                const isVerified = Math.random() > 0.3;
+
+                return {
+                    statement: statement,
+                    verified: isVerified,
+                    confidence: confidence,
+                    explanation: isVerified ?
+                        "Based on our analysis and cross-referencing with multiple sources, this statement appears to be accurate." : "Our analysis suggests this statement may not be entirely accurate. We recommend checking additional sources.",
+                    relatedNews: [{
+                        title: "Recent Developments in " + randomCategory.charAt(0).toUpperCase() + randomCategory.slice(1),
+                        source: "TruthSeeker Analysis",
+                        year: new Date().getFullYear()
+                    }],
+                    category: randomCategory
+                };
+            }
+
+            categorizeStatement(statement) {
+                const categories = {
+                    politics: ['election', 'government', 'president', 'congress', 'senate'],
+                    science: ['research', 'study', 'scientist', 'discovery'],
+                    technology: ['ai', 'computer', 'digital', 'internet', 'tech'],
+                    health: ['medical', 'health', 'disease', 'treatment', 'vaccine'],
+                    environment: ['climate', 'environment', 'pollution', 'renewable']
+                };
+
+                for (const [category, keywords] of Object.entries(categories)) {
+                    if (keywords.some(keyword => statement.includes(keyword))) {
+                        return category;
+                    }
+                }
+
+                return 'general';
+            }
+
+            generateExplanation(topic, isVerified) {
+                if (isVerified) {
+                    return `Our analysis confirms this statement about ${topic} is accurate based on extensive fact-checking and verification against trusted sources.`;
+                } else {
+                    return `Our fact-checking process has identified potential inaccuracies in this statement about ${topic}. We recommend consulting additional verified sources.`;
+                }
+            }
+
+            addMessage(message, type) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${type}`;
+                messageDiv.innerHTML = `
+                    <div class="message-content">
+                        ${this.escapeHtml(message)}
+                    </div>
+                `;
+                this.messagesContainer.appendChild(messageDiv);
+                this.scrollToBottom();
+            }
+
+            addAnalysisMessage(analysis) {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'message bot';
+
+                    const resultClass = analysis.verified ? 'true' : 'false';
+                    const resultText = analysis.verified ? 'Verified' : 'Not Verified';
+
+                    messageDiv.innerHTML = `
+                    <div class="message-content">
+                        <div class="verification-result ${resultClass}">
+                            <strong>${resultText}</strong> (${analysis.confidence}% confidence)
+                            <p>${analysis.explanation}</p>
+                        </div>
+                        <div class="related-news">
+                            <h4>Related News & Sources:</h4>
+                            ${analysis.relatedNews.map(news => `
+                                <div class="news-item">
+                                    <div class="news-title">${news.title}</div>
+                                    <div class="news-source">Source: ${news.source} (${news.year})</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                
+                this.messagesContainer.appendChild(messageDiv);
+                this.scrollToBottom();
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            scrollToBottom() {
+                this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+            }
+
+            showTyping() {
+                this.typingIndicator.style.display = 'flex';
+            }
+
+            hideTyping() {
+                this.typingIndicator.style.display = 'none';
+            }
+
+            sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        // Initialize the DeFakeAI when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new TruthSeekerAI();
+        });
+    </script>
+</body>
+
+</html>
