@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Confirmation - 8een.store</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #f8f9fa;
+            color: #333;
+        }
+        
+        .header {
+            background: #000;
+            color: #fff;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+        
+        .nav-links a {
+            color: #fff;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover {
+            color: #ccc;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .success-card {
+            background: white;
+            border-radius: 15px;
+            padding: 3rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .success-icon {
+            font-size: 4rem;
+            color: #28a745;
+            margin-bottom: 1rem;
+        }
+        
+        .success-title {
+            font-size: 2.5rem;
+            color: #333;
+            margin-bottom: 1rem;
+        }
+        
+        .success-message {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 2rem;
+        }
+        
+        .order-details {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .order-number {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #000;
+            margin-bottom: 1rem;
+        }
+        
+        .order-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .info-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid #000;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+        
+        .info-value {
+            color: #666;
+        }
+        
+        .next-steps {
+            background: #e3f2fd;
+            border-radius: 10px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .next-steps h3 {
+            color: #1976d2;
+            margin-bottom: 1rem;
+        }
+        
+        .next-steps ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .next-steps li {
+            padding: 0.5rem 0;
+            color: #666;
+        }
+        
+        .next-steps li:before {
+            content: "✓ ";
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #000;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #333;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            color: #000;
+            border: 2px solid #000;
+        }
+        
+        .btn-outline:hover {
+            background: #000;
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            .order-info {
+                grid-template-columns: 1fr;
+            }
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <div class="logo">8EEN STORE</div>
+        <nav>
+            <ul class="nav-links">
+                <li><a href="landing.html">Home</a></li>
+                <li><a href="allproduct.html">All Products</a></li>
+                <li><a href="Mens.html">Men's</a></li>
+                <li><a href="Womens.html">Women's</a></li>
+                <li><a href="cart.html">🛒 Cart</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <div class="container">
+        <div class="success-card">
+            <div class="success-icon">🎉</div>
+            <h1 class="success-title">Order Confirmed!</h1>
+            <p class="success-message">Thank you for your purchase! Your order has been successfully placed and is being processed.</p>
+        </div>
+
+        <div class="order-details">
+            <div class="order-number" id="orderNumber">Order #Loading...</div>
+
+            <div class="order-info">
+                <div class="info-item">
+                    <div class="info-label">Order Date</div>
+                    <div class="info-value" id="orderDate">Loading...</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Total Amount</div>
+                    <div class="info-value" id="orderTotal">Loading...</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Payment Method</div>
+                    <div class="info-value" id="paymentMethod">Loading...</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Shipping Address</div>
+                    <div class="info-value" id="shippingAddress">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="next-steps">
+            <h3>What happens next?</h3>
+            <ul>
+                <li>We'll send you an email confirmation shortly</li>
+                <li>Your order will be processed within 1-2 business days</li>
+                <li>You'll receive tracking information once shipped</li>
+                <li>Expected delivery: 3-5 business days</li>
+            </ul>
+        </div>
+
+        <div class="action-buttons">
+            <a href="landing.html" class="btn btn-primary">Continue Shopping</a>
+            <a href="#" class="btn btn-outline" id="trackOrderBtn">Track Order</a>
+        </div>
+    </div>
+
+    <script>
+        // Get order details from URL parameters or localStorage
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const orderNumber = urlParams.get('order') || localStorage.getItem('lastOrderNumber');
+
+            if (orderNumber) {
+                loadOrderDetails(orderNumber);
+            } else {
+                // Fallback to demo data
+                showDemoOrder();
+            }
+        });
+
+        async function loadOrderDetails(orderNumber) {
+            try {
+                const response = await fetch(`http://localhost:3000/api/orders/${orderNumber}`);
+                const order = await response.json();
+
+                if (order) {
+                    displayOrderDetails(order);
+                } else {
+                    showDemoOrder();
+                }
+            } catch (error) {
+                console.error('Error loading order:', error);
+                showDemoOrder();
+            }
+        }
+
+        function displayOrderDetails(order) {
+            document.getElementById('orderNumber').textContent = `Order #${order.orderNumber}`;
+            document.getElementById('orderDate').textContent = new Date(order.createdAt).toLocaleDateString();
+            document.getElementById('orderTotal').textContent = `₹${order.pricing?.total?.toFixed(2) || '0.00'}`;
+            document.getElementById('paymentMethod').textContent = order.payment ? .method || 'Cash on Delivery';
+
+            const address = order.shippingAddress;
+            if (address) {
+                document.getElementById('shippingAddress').textContent =
+                    `${address.street}, ${address.city}, ${address.state} ${address.zipCode}`;
+            }
+        }
+
+        function showDemoOrder() {
+            document.getElementById('orderNumber').textContent = 'Order #8EEN' + Date.now().toString().slice(-6);
+            document.getElementById('orderDate').textContent = new Date().toLocaleDateString();
+            document.getElementById('orderTotal').textContent = '₹899.00';
+            document.getElementById('paymentMethod').textContent = 'Credit Card';
+            document.getElementById('shippingAddress').textContent = 'Your shipping address';
+        }
+    </script>
+</body>
+
+</html>

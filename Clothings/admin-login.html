@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>8EEN STORE - Admin Login</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 3rem;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .logo-number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .logo-text {
+            font-size: 1.8rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #333;
+        }
+        
+        .admin-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+        
+        .admin-subtitle {
+            color: #666;
+            margin-bottom: 2rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #e5e5e5;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 0.8rem;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .login-btn:hover {
+            background: #0056b3;
+        }
+        
+        .login-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .error-message {
+            color: #dc3545;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+        
+        .back-link {
+            margin-top: 1.5rem;
+        }
+        
+        .back-link a {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+        
+        .security-note {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1.5rem;
+            font-size: 0.8rem;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <span class="logo-number">8</span>
+            <span class="logo-text">EEN STORE</span>
+        </div>
+
+        <h2 class="admin-title">Admin Access</h2>
+        <p class="admin-subtitle">Secure Admin Panel Login</p>
+
+        <form id="adminLoginForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" required autocomplete="off">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" required autocomplete="off">
+            </div>
+
+            <button type="submit" class="login-btn" id="loginBtn">Login to Admin Panel</button>
+            <div class="error-message" id="errorMessage"></div>
+        </form>
+
+        <div class="back-link">
+            <a href="landing.html">← Back to Store</a>
+        </div>
+
+        <div class="security-note">
+            <strong>🔒 Security Notice:</strong> This is a restricted admin area. Only authorized personnel can access this panel.
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('errorMessage');
+            const loginBtn = document.getElementById('loginBtn');
+
+            // Clear previous errors
+            errorMessage.style.display = 'none';
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Verifying...';
+
+            // Check credentials
+            if (username === 'Founder' && password === 'Dipanshi yadav') {
+                // Success - set authentication flag and redirect
+                sessionStorage.setItem('adminAuthenticated', 'true');
+                setTimeout(() => {
+                    window.location.href = 'admin.html';
+                }, 500);
+            } else {
+                // Error - show message
+                errorMessage.textContent = 'Invalid username or password';
+                errorMessage.style.display = 'block';
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login to Admin Panel';
+
+                // Clear form
+                document.getElementById('username').value = '';
+                document.getElementById('password').value = '';
+            }
+        });
+
+        // Clear error on input
+        document.getElementById('username').addEventListener('input', function() {
+            document.getElementById('errorMessage').style.display = 'none';
+        });
+
+        document.getElementById('password').addEventListener('input', function() {
+            document.getElementById('errorMessage').style.display = 'none';
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>8EEN STORE - All Products</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #fff;
+            color: #000;
+        }
+        
+        .header {
+            background: transparent;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            height: 80px;
+        }
+        
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #000;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .logo-number {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        
+        .logo-text {
+            font-size: 1.4rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+        
+        .nav-links a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 400;
+            transition: all 0.3s;
+        }
+        
+        .nav-links a:hover {
+            color: #666;
+        }
+        
+        .nav-links a.active {
+            font-weight: 700;
+            color: #000;
+        }
+        
+        .auth-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+            font-weight: 580;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            color: #333;
+        }
+        
+        .btn-outline:hover {
+            background: #aba9a9;
+            color: #333;
+        }
+        
+        .btn-primary {
+            background: #333;
+            color: #fff;
+        }
+        
+        .btn-primary:hover {
+            background: #555;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            margin-top: 80px;
+        }
+        
+        .page-title {
+            margin-bottom: 2rem;
+        }
+        
+        .page-title h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .page-title p {
+            color: #666;
+        }
+        
+        .search-section {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .search-box {
+            display: flex;
+            align-items: center;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            max-width: 200px;
+            flex: 1;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .search-box input {
+            border: none;
+            outline: none;
+            flex: 1;
+            margin-left: 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .search-btn {
+            background: #000;
+            color: #fff;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        
+        .product-count {
+            color: #666;
+            font-size: 0.875rem;
+        }
+        
+        .main-content {
+            display: flex;
+            gap: 2rem;
+        }
+        
+        .sidebar {
+            width: 280px;
+            flex-shrink: 0;
+        }
+        
+        .filters {
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            background: #fff;
+        }
+        
+        .filters h2 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .filter-section {
+            margin-bottom: 1rem;
+        }
+        
+        .filter-section h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .checkbox-label input {
+            width: 16px;
+            height: 16px;
+            margin-right: 0.75rem;
+            cursor: pointer;
+        }
+        
+        .checkbox-label span {
+            font-size: 0.875rem;
+        }
+        
+        .price-range {
+            width: 100%;
+            margin-top: 1rem;
+        }
+        
+        .filter-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .apply-btn {
+            flex: 1;
+            background: #000;
+            color: #fff;
+            border: none;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        
+        .clear-btn {
+            padding: 0.5rem 1rem;
+            background: #fff;
+            border: 1px solid #e5e5e5;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        
+        .products-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 2rem;
+            justify-items: center;
+        }
+        
+        .product-card {
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: box-shadow 0.3s;
+            width: 350px;
+            position: relative;
+        }
+        
+        .product-card:hover {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .product-image {
+            position: relative;
+            background: #f5f5f5;
+            height: 320px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+        }
+        
+        .badge {
+            position: absolute;
+            top: 1rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+        
+        .featured-badge {
+            left: 1rem;
+            background: #fbbf24;
+            color: #000;
+        }
+        
+        .discount-badge {
+            right: 1rem;
+            background: #dc2626;
+            color: #fff;
+        }
+        
+        .product-info {
+            padding: 1rem;
+        }
+        
+        .product-name {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .product-price {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .current-price {
+            font-size: 1.25rem;
+            font-weight: bold;
+        }
+        
+        .original-price {
+            font-size: 0.875rem;
+            color: #999;
+            text-decoration: line-through;
+        }
+        
+        .sizes {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .size-btn {
+            border: 1px solid #e5e5e5;
+            background: #fff;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        
+        .size-btn:hover {
+            background: #f5f5f5;
+        }
+        
+        .quantity-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .quantity-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            border: 1px solid #e5e5e5;
+            border-radius: 4px;
+        }
+        
+        .qty-btn {
+            background: #fff;
+            border: none;
+            padding: 0.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .qty-btn:hover {
+            background: #f5f5f5;
+        }
+        
+        .qty-value {
+            padding: 0 1rem;
+            font-size: 0.875rem;
+        }
+        
+        .add-to-cart {
+            width: 100%;
+            background: #000;
+            color: #fff;
+            border: none;
+            padding: 0.75rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .add-to-cart:hover {
+            background: #333;
+        }
+        
+        svg {
+            width: 20px;
+            height: 20px;
+        }
+        /* Responsive Design */
+        
+        @media (max-width: 768px) {
+            .nav {
+                flex-direction: column;
+                gap: 1rem;
+                padding: 0.5rem 1rem;
+            }
+            .nav-links {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+            .container {
+                padding: 1rem;
+                margin-top: 100px;
+            }
+            .main-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            .sidebar {
+                width: 100%;
+                order: 2;
+            }
+            .products-grid {
+                order: 1;
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                gap: 1rem;
+            }
+            .search-section {
+                flex-direction: column;
+                gap: 0.5rem;
+                align-items: stretch;
+            }
+            .search-box {
+                max-width: 100%;
+            }
+            .product-count {
+                text-align: center;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .products-grid {
+                grid-template-columns: 1fr;
+            }
+            .page-title h1 {
+                font-size: 1.5rem;
+            }
+            .product-image {
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <nav class="nav">
+            <div class="logo">
+                <a href="landing.html" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 0.1rem;">
+                    <span class="logo-number">8</span>
+                    <span class="logo-text">EEN STORE</span>
+                </a>
+            </div>
+            <ul class="nav-links">
+                <li><a href="allproduct.html" class="active">All Products</a></li>
+                <li><a href="Mens.html">Men's</a></li>
+                <li><a href="Womens.html">Women's</a></li>
+                <li><a href="cart.html">🛒 Cart</a></li>
+            </ul>
+            <div class="auth-buttons">
+                <a href="#cart" class="btn btn-outline" style="display:flex; align-items:center; justify-content:center; line-height:1; padding:0.5rem;">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:18px; height:18px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                </a>
+                <a href="login.html" class="btn btn-outline">Sign In</a>
+                <a href="signup.html" class="btn btn-primary">Sign Up</a>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container">
+        <div class="page-title">
+            <h1>All Products</h1>
+            <p>Discover our complete collection of vintage-inspired fashion</p>
+        </div>
+
+        <div class="search-section">
+            <div class="search-box">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <input type="text" placeholder="Search products...">
+            </div>
+            <button class="search-btn">Search</button>
+            <span class="product-count">18 products found</span>
+        </div>
+
+        <div class="main-content">
+            <div class="products-grid" id="products-grid">
+                <!-- Products will be loaded dynamically from database -->
+                <div class="loading">Loading products...</div>
+            </div>
+        </div>
+
+        <script src="js/api.js"></script>
+        <script>
+            // Additional styles for dynamic content
+            const style = document.createElement('style');
+            style.textContent = `
+            .loading {
+                text-align: center;
+                padding: 2rem;
+                font-size: 1.2rem;
+                color: #666;
+            }
+            .no-products {
+                text-align: center;
+                padding: 3rem;
+                color: #666;
+            }
+            .no-products h3 {
+                font-size: 1.5rem;
+                margin-bottom: 1rem;
+                color: #333;
+            }
+            .error {
+                text-align: center;
+                padding: 2rem;
+                color: #dc2626;
+            }
+            .product-description {
+                font-size: 0.9rem;
+                color: #666;
+                margin-bottom: 0.5rem;
+                line-height: 1.4;
+            }
+            .product-details {
+                font-size: 0.8rem;
+                color: #888;
+                margin-bottom: 0.5rem;
+            }
+            .product-details div {
+                margin-bottom: 0.25rem;
+            }
+        `;
+            document.head.appendChild(style);
+
+            // Load all products on page load
+            document.addEventListener('DOMContentLoaded', async function() {
+                await loadAllProducts();
+            });
+
+            // Load all products
+            async function loadAllProducts() {
+                try {
+                    const response = await fetch('http://localhost:3000/api/products');
+                    const data = await response.json();
+                    const products = data.products || [];
+                    displayProducts(products);
+                    updateProductCount(products.length);
+                } catch (error) {
+                    console.error('Error loading products:', error);
+                    document.getElementById('products-grid').innerHTML = `
+                    <div class="error">
+                        <h3>Error loading products</h3>
+                        <p>Please try again later.</p>
+                    </div>
+                `;
+                }
+            }
+
+            // Display products
+            function displayProducts(products) {
+                const container = document.getElementById('products-grid');
+
+                if (products.length === 0) {
+                    container.innerHTML = `
+                    <div class="no-products">
+                        <h3>No products found</h3>
+                        <p>Products will be added soon!</p>
+                    </div>
+                `;
+                    return;
+                }
+
+                container.innerHTML = products.map(product => createProductCard(product)).join('');
+            }
+
+            // Create product card
+            function createProductCard(product) {
+                const discountPercentage = product.originalPrice && product.originalPrice > product.price ?
+                    Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) :
+                    0;
+
+                return `
+                <div class="product-card" data-product-id="${product._id}" style="width: 350px; margin: 0 auto;">
+                    <div class="product-image" style="height: 300px; overflow: hidden; position: relative; background: #f5f5f5; display: flex; align-items: center; justify-content: center;">
+                        ${product.isFeatured ? '<span class="badge featured-badge">Featured</span>' : ''}
+                        ${discountPercentage > 0 ? `<span class="badge discount-badge">-${discountPercentage}%</span>` : ''}
+                        <img src="${product.images && product.images.length > 0 ? product.images[0].url : 'https://picsum.photos/400/300?random=1'}" 
+                             alt="${product.images && product.images.length > 0 ? product.images[0].alt : product.name}" 
+                             style="width: 100%; height: 100%; object-fit: cover; background: #f5f5f5;"
+                             onerror="this.src='https://picsum.photos/400/300?random=1'; this.style.background='#f5f5f5';"
+                             onload="console.log('Image loaded:', this.src);"
+                             onerror="console.log('Image failed:', this.src); this.src='https://picsum.photos/400/300?random=1';">
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #666; font-size: 1.2rem; display: none;" id="no-image-${product._id}">
+                            📷 No Image
+                        </div>
+                    </div>
+                    <div class="product-info" style="padding: 16px;">
+                        <h3 class="product-name" style="font-size: 1.1rem; margin-bottom: 10px; font-weight: 600;">${product.name}</h3>
+                        <div class="product-price" style="margin-bottom: 10px;">
+                            <span class="current-price" style="font-size: 1.2rem; font-weight: 700; color: #000;">₹${product.price}</span>
+                            ${product.originalPrice ? `<span class="original-price" style="font-size: 1rem; color: #666; text-decoration: line-through; margin-left: 8px;">₹${product.originalPrice}</span>` : ''}
+                        </div>
+                        <div class="product-description" style="font-size: 0.9rem; color: #666; margin-bottom: 10px; line-height: 1.4; height: 2.8rem; overflow: hidden;">${product.description}</div>
+                        <div class="product-details" style="margin-bottom: 10px;">
+                            <div class="sizes" style="font-size: 0.85rem; color: #888; margin-bottom: 4px;">
+                                <strong>Sizes:</strong> ${product.sizes.map(s => s.size).join(', ')}
+                            </div>
+                            <div class="colors" style="font-size: 0.85rem; color: #888;">
+                                <strong>Colors:</strong> ${product.colors.map(c => c.name).join(', ')}
+                            </div>
+                        </div>
+                        <div class="size-selector" style="margin-bottom: 12px;">
+                            ${product.sizes.slice(0, 4).map(size => 
+                                `<button class="size-btn" data-size="${size.size}" onclick="selectSize(this)" style="padding: 6px 10px; margin: 3px; border: 1px solid #ddd; background: white; border-radius: 4px; font-size: 0.85rem; cursor: pointer;">${size.size}</button>`
+                            ).join('')}
+                        </div>
+                        <button class="add-to-cart" onclick="addToCart('${product._id}', '${product.name}', ${product.price})" style="width: 100%; padding: 10px; background: #000; color: white; border: none; border-radius: 4px; font-size: 0.95rem; cursor: pointer; font-weight: 500;">
+                            🛒 Add to Cart
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Update product count
+        function updateProductCount(count) {
+            const countElement = document.querySelector('.product-count');
+            if (countElement) {
+                countElement.textContent = `${count} products found`;
+            }
+        }
+
+        // Size selection function
+        function selectSize(button) {
+            const productCard = button.closest('.product-card');
+            const allSizeButtons = productCard.querySelectorAll('.size-btn');
+            allSizeButtons.forEach(btn => {
+                btn.style.background = 'white';
+                btn.style.color = '#000';
+            });
+            
+            button.style.background = '#000';
+            button.style.color = 'white';
+        }
+        </script>
+</body>
+
+</html>

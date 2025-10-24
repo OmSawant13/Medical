@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - 8EEN STORE</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #fff;
+            color: #000;
+        }
+        
+        .header {
+            background: transparent;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            height: 80px;
+        }
+        
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #000;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .logo-number {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        
+        .logo-text {
+            font-size: 1rem;
+            text-transform: uppercase;
+        }
+        
+        .container {
+            max-width: 420px;
+            margin: 0 auto;
+            padding: 2rem;
+            margin-top: 120px;
+        }
+        
+        .card {
+            border: 1px solid #e5e5e5;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+        
+        .title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 1rem;
+        }
+        
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .label {
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .input {
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            padding: 0.75rem 0.9rem;
+            font-size: 0.95rem;
+        }
+        
+        .row {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+        
+        .btn {
+            flex: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 0.7rem 1rem;
+            border-radius: 10px;
+            border: 1px solid #e5e5e5;
+            cursor: pointer;
+            background: #fff;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+        
+        .btn:hover {
+            background: #f7f7f7;
+        }
+        
+        .btn.primary {
+            background: #000;
+            color: #fff;
+            border-color: #000;
+        }
+        
+        .btn.primary:hover {
+            background: #333;
+        }
+        
+        .btn.google {
+            background: #fff;
+        }
+        
+        .btn.google svg {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .hr {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 1rem 0;
+            color: #888;
+            font-size: 0.85rem;
+        }
+        
+        .hr::before,
+        .hr::after {
+            content: "";
+            height: 1px;
+            background: #eee;
+            flex: 1;
+        }
+        
+        .msg {
+            margin-top: 0.75rem;
+            font-size: 0.9rem;
+        }
+        
+        .msg.error {
+            color: #b91c1c;
+        }
+        
+        .msg.success {
+            color: #166534;
+        }
+        
+        .footer-note {
+            margin-top: 1rem;
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .link {
+            color: #111;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <nav class="nav">
+            <div class="logo">
+                <a href="landing.html" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 0.5rem;">
+                    <span class="logo-number">88</span>
+                    <span class="logo-text">8EEN STORE</span>
+                </a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="card">
+            <div class="title">Welcome back</div>
+            <div class="subtitle">Sign in or create an account</div>
+
+            <div class="field">
+                <label class="label" for="email">Email</label>
+                <input id="email" type="email" class="input" placeholder="you@example.com">
+            </div>
+            <div class="field">
+                <label class="label" for="password">Password</label>
+                <input id="password" type="password" class="input" placeholder="••••••••">
+            </div>
+
+            <div class="row">
+                <button id="btnSignIn" class="btn primary">Sign In</button>
+                <button id="btnSignUp" class="btn">Create Account</button>
+            </div>
+
+            <div class="hr">or continue with</div>
+
+            <button id="btnGoogle" class="btn google" style="width:100%">
+                <svg viewBox="0 0 533.5 544.3" xmlns="http://www.w3.org/2000/svg"><path d="M533.5 278.4c0-18.5-1.7-36.4-4.9-53.6H272v101.5h147.3c-6.4 34.6-25.9 63.9-55.1 83.6v69.4h88.9c52-47.9 80.4-118.6 80.4-201z" fill="#4285F4"/><path d="M272 544.3c72.8 0 134-24 178.6-65.1l-88.9-69.4c-24.6 16.5-56.1 26.2-89.7 26.2-68.9 0-127.3-46.6-148.2-109.2H33.5v68.7C77.9 487.5 168.8 544.3 272 544.3z" fill="#34A853"/><path d="M123.8 326.8c-4.6-13.6-7.2-28.2-7.2-43.2s2.6-29.6 7.2-43.2v-68.7H33.5C12 205.7 0 240.2 0 283.6s12 77.9 33.5 112.1l90.3-68.9z" fill="#FBBC05"/><path d="M272 107.7c39.6 0 75.3 13.6 103.3 40.4l77.5-77.5C405.8 25.2 344.6 0 272 0 168.8 0 77.9 56.8 33.5 140.8l90.3 68.7C144.7 154.3 203.1 107.7 272 107.7z" fill="#EA4335"/></svg>
+                Continue with Google
+            </button>
+
+            <div id="message" class="msg" style="display:none"></div>
+
+            <div class="footer-note">
+                By continuing, you agree to our <a class="link" href="#terms">Terms</a> and <a class="link" href="#privacy">Privacy Policy</a>.
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js'; import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js'; import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+        GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js'; const firebaseConfig = { apiKey: "AIzaSyCFCfe6S6VZ6GtzteEgPEzUSLbjfIBDOzA", authDomain: "eenstore-40b41.firebaseapp.com",
+        projectId: "eenstore-40b41", storageBucket: "eenstore-40b41.firebasestorage.app", messagingSenderId: "822314022215", appId: "1:822314022215:web:70c66a13caba3ba8424862", measurementId: "G-KXL7Q720QF" }; const app = initializeApp(firebaseConfig);
+        try { getAnalytics(app); } catch (e) {} const auth = getAuth(app); const provider = new GoogleAuthProvider(); provider.setCustomParameters({ prompt: 'select_account' }); const el = (id) => document.getElementById(id); const showMsg = (text, type='error')
+        => { const box = el('message'); box.textContent = text; box.className = `msg ${type}`; box.style.display = 'block'; }; const isFile = location.protocol === 'file:'; async function handleGoogle() { if (isFile) { showMsg('Google sign-in needs http(s).
+        Please run a local server (e.g. Live Server) and add http://localhost in Firebase Authorized domains.', 'error'); return; } try { await signInWithPopup(auth, provider); showMsg('Signed in with Google. Redirecting…', 'success'); setTimeout(() =>
+        window.location.href = 'landing.html', 800); } catch (err) { try { await signInWithRedirect(auth, provider); } catch (e) { showMsg(e.message || 'Google sign-in failed'); } } } getRedirectResult(auth).then((result) => { if (result && result.user)
+        { showMsg('Signed in with Google. Redirecting…', 'success'); setTimeout(() => window.location.href = 'landing.html', 800); } }).catch((e) => showMsg(e.message || 'Google sign-in failed')); el('btnSignIn').addEventListener('click', async () =>
+        { const email = el('email').value.trim(); const password = el('password').value; try { await signInWithEmailAndPassword(auth, email, password); showMsg('Signed in successfully. Redirecting…', 'success'); setTimeout(() => window.location.href =
+        'landing.html', 800); } catch (err) { showMsg(err.message || 'Unable to sign in'); } }); el('btnSignUp').addEventListener('click', async () => { const email = el('email').value.trim(); const password = el('password').value; try { await createUserWithEmailAndPassword(auth,
+        email, password); showMsg('Account created. You are now signed in. Redirecting…', 'success'); setTimeout(() => window.location.href = 'landing.html', 800); } catch (err) { showMsg(err.message || 'Unable to create account'); } }); el('btnGoogle').addEventListener('click',
+        handleGoogle);
+    </script>
+</body>
+
+</html>
