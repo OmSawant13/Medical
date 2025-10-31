@@ -1,0 +1,114 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && 
+        (resource.data.status == 'active' || 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true);
+    }
+    
+    // Profiles collection
+    match /profiles/{profileId} {
+      allow read: if request.auth != null && 
+        (request.auth.uid == profileId || 
+         resource.data.isOnline == true);
+      allow write: if request.auth != null && request.auth.uid == profileId;
+    }
+    
+    // Matches collection
+    match /matches/{matchId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid in resource.data.users;
+    }
+    
+    // Swipes collection
+    match /swipes/{swipeId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Messages collection
+    match /messages/{messageId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.senderId;
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/conversations/$(resource.data.conversationId)) &&
+        request.auth.uid in get(/databases/$(database)/documents/conversations/$(resource.data.conversationId)).data.participants;
+    }
+    
+    // Conversations collection
+    match /conversations/{conversationId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid in resource.data.participants;
+    }
+    
+    // Premium subscriptions collection
+    match /premium_subscriptions/{subscriptionId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+    }
+    
+    // Rewards collection
+    match /rewards/{rewardId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+    }
+    
+    // Notifications collection
+    match /notifications/{notificationId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+    }
+    
+    // Reports collection
+    match /reports/{reportId} {
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.reporterId;
+      allow read, write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Blocked users collection
+    match /blocked_users/{blockId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.blockerId;
+    }
+    
+    // Admin logs collection
+    match /admin_logs/{logId} {
+      allow read, write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Analytics collection
+    match /analytics/{analyticsId} {
+      allow read, write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Interests collection (public read)
+    match /interests/{interestId} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Locations collection (public read)
+    match /locations/{locationId} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Leaderboard collection (public read)
+    match /leaderboard/{leaderboardId} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+  }
+}
