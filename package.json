@@ -1,0 +1,49 @@
+{
+  "name": "health-link",
+  "version": "1.0.0",
+  "description": "Health-Link - Unified Healthcare Ecosystem",
+  "main": "server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js",
+    "client": "cd frontend && npm start",
+    "client-install": "cd frontend && npm install",
+    "install-all": "npm install && cd frontend && npm install",
+    "setup": "npm install && cd frontend && npm install",
+    "build": "cd frontend && npm run build",
+    "seed": "node backend/scripts/seedHospitals.js",
+    "create-users": "node backend/scripts/createTestUsers.js",
+    "lint": "eslint backend/**/*.js frontend/src/**/*.{js,jsx}",
+    "lint:fix": "eslint backend/**/*.js frontend/src/**/*.{js,jsx} --fix",
+    "format": "prettier --write \"**/*.{js,jsx,json,css,md}\""
+  },
+  "keywords": [
+    "healthcare",
+    "medical",
+    "mern"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "axios": "^1.6.2",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.0.3",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "qrcode": "^1.5.3"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "nodemon": "^3.0.2",
+    "prettier": "^3.6.2"
+  }
+}
