@@ -72,6 +72,7 @@ A comprehensive medical platform connecting Patients, Doctors, and Hospitals wit
 - Node.js (v14+)
 - MongoDB (Local or Atlas)
 - Google Gemini API Key (for AI features)
+- Hugging Face API Key (optional, for enhanced medical NLP)
 
 ### **Installation**
 
@@ -97,6 +98,9 @@ JWT_SECRET=your_super_secret_jwt_key_change_in_production
 
 # AI (Google Gemini)
 GEMINI_API_KEY=your_gemini_api_key_here
+
+# Medical NLP (Hugging Face - Optional but recommended)
+HUGGINGFACE_API_KEY=your_huggingface_token_here
 
 # Server
 PORT=5001
@@ -213,6 +217,7 @@ medical/
 
 ## 🤖 AI Integration
 
+### **Primary: Google Gemini**
 Uses **Google Gemini 1.5 Flash** for:
 - Medical report analysis
 - X-ray image analysis
@@ -222,6 +227,20 @@ Uses **Google Gemini 1.5 Flash** for:
 **Setup:**
 1. Get API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
 2. Add to `.env`: `GEMINI_API_KEY=your_key`
+
+### **Enhanced: Medical NLP (Optional)**
+Uses **Hugging Face Medical Models** for:
+- Clinical text understanding (Bio_ClinicalBERT)
+- Medical entity extraction
+- Lab result analysis
+- Better accuracy for medical reports
+
+**Setup:**
+1. Get free API key from [Hugging Face](https://huggingface.co/settings/tokens)
+2. Add to `.env`: `HUGGINGFACE_API_KEY=your_token`
+3. Automatically enhances medical analysis!
+
+**Note:** Works without Hugging Face too, but medical NLP provides better accuracy.
 
 ---
 

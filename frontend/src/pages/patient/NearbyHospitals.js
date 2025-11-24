@@ -149,7 +149,7 @@ const NearbyHospitals = () => {
                       <p style={{ fontSize: '0.875rem', color: 'var(--primary)', fontWeight: 600, marginBottom: '0.5rem' }}>
                         📍 {hospital.city}{hospital.city && hospital.state ? ', ' : ''}{hospital.state}
                       </p>
-                    )}
+                )}
                     {hospital.address && (
                       <p style={{ fontSize: '0.875rem', color: 'var(--gray-600)', marginBottom: '0.25rem' }}>
                         {hospital.address}

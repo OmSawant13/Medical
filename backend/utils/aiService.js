@@ -234,10 +234,42 @@ const analyzeReport = async (reportText, files = [], recordType = 'other') => {
 
 /**
  * Analyze report text only (internal function)
+ * Now uses medical NLP libraries for better analysis
  */
 const analyzeReportText = async (reportText) => {
   try {
-    // If AI_API_KEY is configured, use real AI
+    // Try medical NLP summarization first (if available)
+    try {
+      const { summarizeMedicalReport, extractMedicalEntities, analyzeLabResults } = require('./medicalNLP');
+      
+      // Get medical summary
+      const medicalSummary = await summarizeMedicalReport(reportText);
+      if (medicalSummary && medicalSummary.summary) {
+        // Extract entities
+        const entities = await extractMedicalEntities(reportText);
+        
+        // Analyze lab results if present
+        const labAnalysis = reportText.toLowerCase().includes('lab') || reportText.toLowerCase().includes('test') 
+          ? await analyzeLabResults(reportText)
+          : null;
+
+        return {
+          summary: medicalSummary.summary,
+          keyFindings: extractFindings(medicalSummary.summary),
+          recommendations: extractRecommendations(medicalSummary.summary),
+          entities: entities,
+          labAnalysis: labAnalysis,
+          confidence: 0.92,
+          isAIGenerated: true,
+          model: medicalSummary.model || 'Medical NLP',
+          source: medicalSummary.source || 'hybrid'
+        };
+      }
+    } catch (nlpError) {
+      console.warn('Medical NLP not available, using standard AI:', nlpError.message);
+    }
+
+    // Fallback to standard AI analysis
     if (process.env.AI_API_KEY && process.env.AI_API_KEY !== 'your_ai_api_key_here') {
       try {
         // Try Google Gemini first (API keys start with AIza)
@@ -247,14 +279,16 @@ const analyzeReportText = async (reportText) => {
           const genAI = new GoogleGenerativeAI(apiKey);
           const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
           
-          const prompt = `You are a medical AI assistant. Analyze this medical report and provide structured insights. Always emphasize consulting healthcare professionals. 
+          // Enhanced medical prompt
+          const prompt = `You are a medical AI assistant trained on clinical data. Analyze this medical report and provide structured insights. Always emphasize consulting healthcare professionals. 
 
 Report: ${reportText.substring(0, 3000)}
 
 Provide:
-1. Key findings
-2. Recommendations  
-3. Important notes
+1. **Clinical Findings**: Key observations and test results
+2. **Diagnosis**: Primary and differential diagnoses  
+3. **Recommendations**: Next steps and follow-up care
+4. **Risk Assessment**: Any critical findings
 
 Format your response clearly with sections.`;
           
@@ -268,7 +302,7 @@ Format your response clearly with sections.`;
             recommendations: extractRecommendations(aiSummary),
             confidence: 0.90,
             isAIGenerated: true,
-            model: 'Google Gemini 1.5 Flash'
+            model: 'Google Gemini 1.5 Flash (Medical)'
           };
         }
         // Try OpenAI

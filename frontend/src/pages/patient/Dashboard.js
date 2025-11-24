@@ -191,7 +191,7 @@ const PatientDashboard = () => {
 
       {/* Patient Info */}
       {dashboard.patient.allergies && dashboard.patient.allergies.length > 0 && (
-        <div className="card">
+      <div className="card">
           <h2 className="card-title">Important Information</h2>
           <div>
             <p style={{ marginBottom: '0.5rem' }}>

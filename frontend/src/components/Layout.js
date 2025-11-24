@@ -73,15 +73,15 @@ const Layout = ({ role }) => {
           {sidebarOpen && (
             <div>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: 'white' }}>
-                Health-Link
-              </h2>
+            Health-Link
+          </h2>
               <p style={{ fontSize: '0.75rem', opacity: 0.7, margin: 0 }}>
                 Healthcare Platform
-              </p>
+          </p>
             </div>
           )}
         </div>
-
+        
         {/* User Info */}
         {sidebarOpen && (
           <div style={{ 
@@ -115,15 +115,15 @@ const Layout = ({ role }) => {
           {menu.map((item) => {
             const active = isActive(item.path);
             return (
-              <Link
-                key={item.path}
-                to={item.path}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
+            <Link
+              key={item.path}
+              to={item.path}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
                   padding: '0.875rem 1.5rem',
                   color: active ? 'white' : 'rgba(255,255,255,0.7)',
-                  textDecoration: 'none',
+                textDecoration: 'none',
                   transition: 'all 0.2s ease',
                   background: active ? 'rgba(37, 99, 235, 0.2)' : 'transparent',
                   borderLeft: active ? '3px solid var(--primary)' : '3px solid transparent',
@@ -131,7 +131,7 @@ const Layout = ({ role }) => {
                   marginRight: '0.5rem',
                   borderRadius: 'var(--radius-md)',
                   marginBottom: '0.25rem'
-                }}
+              }}
                 onMouseEnter={(e) => {
                   if (!active) {
                     e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
@@ -144,7 +144,7 @@ const Layout = ({ role }) => {
                     e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
                   }
                 }}
-              >
+            >
                 <span style={{ 
                   fontSize: '1.25rem', 
                   marginRight: sidebarOpen ? '0.75rem' : '0',
@@ -166,7 +166,7 @@ const Layout = ({ role }) => {
                     {item.label}
                   </span>
                 )}
-              </Link>
+            </Link>
             );
           })}
         </nav>

@@ -97,7 +97,7 @@ const PatientAppointments = () => {
     if (e.target.name === 'uploaded_files') {
       setFormData({ ...formData, uploaded_files: e.target.files });
     } else {
-      setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
     }
   };
 
@@ -152,10 +152,10 @@ const PatientAppointments = () => {
         }
         
         toast.success('Appointment booked successfully! 🎉');
-        setShowForm(false);
+      setShowForm(false);
         setFormData({ doctor_id: '', date_time: '', symptoms: '', uploaded_files: null });
         setStep('hospital');
-        fetchAppointments();
+      fetchAppointments();
         navigate('/patient/appointments');
       } else {
         toast.error('Unexpected response format');
@@ -264,7 +264,7 @@ const PatientAppointments = () => {
             }}
           >
             ← Back to Hospitals
-          </button>
+        </button>
         )}
       </div>
 
@@ -312,7 +312,7 @@ const PatientAppointments = () => {
             </div>
           ) : (
             <div className="grid grid-3">
-              {doctors.map((doctor) => (
+                {doctors.map((doctor) => (
                 <div
                   key={doctor.user_id}
                   className="card"
@@ -506,7 +506,7 @@ const PatientAppointments = () => {
                     ) : (
                       '📅 Book Appointment'
                     )}
-                  </button>
+            </button>
                 </div>
             </div>
           </form>
@@ -601,7 +601,7 @@ const PatientAppointments = () => {
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  {apt.status !== 'completed' && !apt.visit_completed && (
+                    {apt.status !== 'completed' && !apt.visit_completed && (
                     <>
                       <button
                         className="btn btn-success btn-sm"
@@ -627,7 +627,7 @@ const PatientAppointments = () => {
                             ✕ Cancel
                           </button>
                         </>
-                      )}
+                    )}
                     </>
                   )}
                 </div>
