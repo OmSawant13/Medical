@@ -260,7 +260,7 @@ const PatientAppointments = () => {
             <div className="empty-state-icon">🏥</div>
             <div className="empty-state-title">Select a Hospital or Clinic</div>
             <div className="empty-state-description">
-              Choose a hospital/clinic in your area to see available doctors and book an appointment
+              <strong>Important:</strong> You must first select a hospital or clinic. Then you'll see all available doctors at that location and can book an appointment.
             </div>
             <button 
               className="btn btn-primary" 
