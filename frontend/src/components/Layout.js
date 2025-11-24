@@ -16,7 +16,6 @@ const Layout = ({ role }) => {
   const patientMenu = [
     { path: '/patient/dashboard', label: 'Dashboard', icon: '📊' },
     { path: '/patient/appointments', label: 'Appointments', icon: '📅' },
-    { path: '/patient/search-doctors', label: 'Search Doctors', icon: '🔍' },
     { path: '/patient/history', label: 'Health Locker', icon: '🏥' },
     { path: '/patient/nearby-hospitals', label: 'Nearby Hospitals', icon: '📍' },
     { path: '/patient/notifications', label: 'Notifications', icon: '🔔' },

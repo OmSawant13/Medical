@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { appointmentAPI, hospitalAPI, qrAPI, doctorAPI } from '../../services/api';
+import { appointmentAPI, hospitalAPI, qrAPI } from '../../services/api';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
 import { QRCodeSVG } from 'qrcode.react';
@@ -8,7 +8,7 @@ import { QRCodeSVG } from 'qrcode.react';
 const PatientAppointments = () => {
   const [searchParams] = useSearchParams();
   const hospitalIdFromUrl = searchParams.get('hospital');
-  const doctorIdFromUrl = searchParams.get('doctor');
+  // Removed doctorIdFromUrl - patients must book through hospitals only
   
   const [appointments, setAppointments] = useState([]);
   const [selectedHospital, setSelectedHospital] = useState(null);
@@ -34,11 +34,10 @@ const PatientAppointments = () => {
     fetchAppointments();
     if (hospitalIdFromUrl) {
       loadHospitalDoctors(hospitalIdFromUrl);
-    } else if (doctorIdFromUrl) {
-      loadDoctorDirect(doctorIdFromUrl);
     }
+    // Remove direct doctor booking - must go through hospital
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hospitalIdFromUrl, doctorIdFromUrl]);
+  }, [hospitalIdFromUrl]);
 
   const fetchAppointments = async () => {
     try {
@@ -67,21 +66,7 @@ const PatientAppointments = () => {
     }
   };
 
-  const loadDoctorDirect = async (doctorId) => {
-    try {
-      setLoadingDoctors(true);
-      const response = await doctorAPI.getOne(doctorId);
-      const doctor = response.data.doctor;
-      setDoctors([doctor]);
-      setStep('doctor');
-      setFormData({ ...formData, doctor_id: doctorId });
-    } catch (error) {
-      console.error('Failed to load doctor:', error);
-      toast.error('Failed to load doctor');
-    } finally {
-      setLoadingDoctors(false);
-    }
-  };
+  // Removed loadDoctorDirect - patients must book through hospitals only
 
   const handleHospitalSelect = () => {
     navigate('/patient/nearby-hospitals');

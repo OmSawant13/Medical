@@ -1,0 +1,23 @@
+PRESCRIPTION
+Patient: Om Sawant
+Date: 25 Oct 2025
+Doctor: Dr. Sharma
+
+DIAGNOSIS:
+Upper respiratory tract infection with mild fever
+
+PRESCRIPTION:
+1. Paracetamol 500mg - 1 tablet twice daily after meals (5 days)
+2. Amoxicillin 500mg - 1 capsule three times daily (7 days)
+3. Cough Syrup - 10ml twice daily (5 days)
+
+ADVICE:
+- Take rest for 3-4 days
+- Drink plenty of fluids
+- Avoid cold food and drinks
+- Follow up if symptoms persist after 7 days
+
+Dr. Sharma
+MBBS, MD (General Medicine)
+License: MED-12345
+

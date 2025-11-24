@@ -1,0 +1,36 @@
+DISCHARGE SUMMARY
+Patient: Om Sawant
+Admission Date: 20 Oct 2025
+Discharge Date: 22 Oct 2025
+Ward: General Medicine
+
+ADMISSION DIAGNOSIS:
+Acute gastroenteritis with dehydration
+
+TREATMENT GIVEN:
+- IV fluids: Normal saline 2L over 24 hours
+- Antibiotics: Ceftriaxone 1g IV twice daily
+- Antiemetics: Ondansetron 4mg IV as needed
+- Antipyretics: Paracetamol 500mg IV as needed
+
+INVESTIGATIONS:
+- CBC: WBC elevated (12,000)
+- Blood Culture: Negative
+- Stool Culture: E. coli positive
+
+DISCHARGE DIAGNOSIS:
+Acute gastroenteritis, resolved
+
+DISCHARGE MEDICATION:
+1. Ciprofloxacin 500mg - Twice daily (5 days)
+2. Probiotics - Once daily (7 days)
+3. ORS - As needed
+
+FOLLOW-UP:
+- Review after 1 week
+- Continue medications as prescribed
+- Maintain hydration
+
+Dr. Hospital Doctor
+MBBS, MD
+

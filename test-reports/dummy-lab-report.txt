@@ -1,0 +1,38 @@
+LABORATORY REPORT
+Patient: Om Sawant
+Date: 25 Oct 2025
+Lab ID: LAB-2025-001
+
+COMPLETE BLOOD COUNT (CBC)
+Hemoglobin (Hb): 14.5 g/dL (Normal: 12-16)
+White Blood Cells (WBC): 8500 /μL (Normal: 4000-11000)
+Red Blood Cells (RBC): 4.8 million/μL (Normal: 4.5-5.5)
+Platelets: 250,000 /μL (Normal: 150,000-450,000)
+
+BLOOD CHEMISTRY
+Glucose (Fasting): 95 mg/dL (Normal: 70-100)
+Creatinine: 1.0 mg/dL (Normal: 0.6-1.2)
+Cholesterol Total: 180 mg/dL (Normal: <200)
+ALT: 35 U/L (Normal: 7-56)
+AST: 28 U/L (Normal: 10-40)
+
+LIPID PROFILE
+Total Cholesterol: 180 mg/dL
+HDL: 45 mg/dL (Normal: >40)
+LDL: 110 mg/dL (Normal: <100)
+Triglycerides: 125 mg/dL (Normal: <150)
+
+URINE ANALYSIS
+Color: Yellow
+Appearance: Clear
+pH: 6.5 (Normal: 5.0-8.0)
+Protein: Negative
+Glucose: Negative
+Blood: Negative
+
+IMPRESSION:
+All values within normal range. No abnormalities detected.
+
+Dr. Lab Technician
+Certified Laboratory
+

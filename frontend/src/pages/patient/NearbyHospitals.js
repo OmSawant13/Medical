@@ -51,6 +51,9 @@ const NearbyHospitals = () => {
   return (
     <div className="container">
       <h1>Find Hospitals & Clinics</h1>
+      <p style={{ color: 'var(--gray-600)', marginBottom: '1.5rem', fontSize: '0.95rem' }}>
+        Search for hospitals and clinics in your area. Once you select a hospital, you'll see all available doctors there.
+      </p>
 
       <div className="card">
         <h2>Search Hospitals</h2>

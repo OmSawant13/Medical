@@ -91,13 +91,9 @@ const PatientDashboard = () => {
             <span>🏥</span>
             <span>Health Locker</span>
           </Link>
-          <Link to="/patient/search-doctors" className="btn btn-outline" style={{ textDecoration: 'none', justifyContent: 'center' }}>
-            <span>🔍</span>
-            <span>Search Doctors</span>
-          </Link>
           <Link to="/patient/nearby-hospitals" className="btn btn-outline" style={{ textDecoration: 'none', justifyContent: 'center' }}>
             <span>📍</span>
-            <span>Find Hospitals</span>
+            <span>Find Hospitals & Doctors</span>
           </Link>
         </div>
       </div>

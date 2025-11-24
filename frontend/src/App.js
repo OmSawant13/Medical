@@ -14,7 +14,6 @@ import PatientHistory from './pages/patient/History';
 import PatientSettings from './pages/patient/Settings';
 import PatientNotifications from './pages/patient/Notifications';
 import NearbyHospitals from './pages/patient/NearbyHospitals';
-import SearchDoctors from './pages/patient/SearchDoctors';
 
 // Doctor Pages
 import DoctorDashboard from './pages/doctor/Dashboard';
@@ -41,7 +40,6 @@ function App() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<PatientDashboard />} />
             <Route path="appointments" element={<PatientAppointments />} />
-            <Route path="search-doctors" element={<SearchDoctors />} />
             <Route path="history" element={<PatientHistory />} />
             <Route path="notifications" element={<PatientNotifications />} />
             <Route path="settings" element={<PatientSettings />} />

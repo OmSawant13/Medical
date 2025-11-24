@@ -1,0 +1,27 @@
+CHEST X-RAY REPORT
+Patient: Om Sawant
+Date: 25 Oct 2025
+Exam ID: XR-2025-001
+
+CLINICAL HISTORY:
+Patient presents with persistent cough and shortness of breath for 5 days.
+
+TECHNIQUE:
+Single view PA chest X-ray performed in erect position.
+
+FINDINGS:
+- Heart size: Normal cardiomediastinal silhouette
+- Lungs: Bilateral clear lung fields, no acute infiltrates
+- Pleura: No pleural effusion or pneumothorax
+- Bones: Intact ribs and clavicles, no fractures
+- Soft tissues: Normal
+
+IMPRESSION:
+Normal chest X-ray. No acute cardiopulmonary abnormalities.
+
+RECOMMENDATIONS:
+Clinical correlation advised. If symptoms persist, consider CT scan.
+
+Dr. Radiologist
+Certified Radiology Department
+
