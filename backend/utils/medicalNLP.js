@@ -16,14 +16,21 @@ const summarizeMedicalReport = async (reportText) => {
     if (process.env.HUGGINGFACE_API_KEY) {
       try {
         // Use BioBERT or ClinicalBERT models via Hugging Face
+        // Better models for medical text: 
+        // - emilyalsentzer/Bio_ClinicalBERT (good for clinical notes)
+        // - microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext (better for abstracts)
+        // - dmis-lab/biobert-base-cased-v1.2 (good for biomedical text)
+        const modelName = process.env.HF_MEDICAL_MODEL || 'emilyalsentzer/Bio_ClinicalBERT';
+        
         const response = await axios.post(
-          'https://api-inference.huggingface.co/models/emilyalsentzer/Bio_ClinicalBERT',
+          `https://api-inference.huggingface.co/models/${modelName}`,
           {
-            inputs: `Summarize this medical report: ${reportText.substring(0, 1000)}`,
+            inputs: `Summarize this medical report in clinical language: ${reportText.substring(0, 1000)}`,
             parameters: {
-              max_length: 200,
-              min_length: 50,
-              do_sample: false
+              max_length: 250,
+              min_length: 80,
+              do_sample: false,
+              temperature: 0.3 // Lower temperature for more accurate, deterministic output
             }
           },
           {

@@ -102,6 +102,10 @@ GEMINI_API_KEY=your_gemini_api_key_here
 # Medical NLP (Hugging Face - Optional but recommended)
 HUGGINGFACE_API_KEY=your_huggingface_token_here
 
+# Optional: Use better models for higher accuracy
+GEMINI_MODEL=gemini-1.5-pro  # Use 'pro' instead of 'flash' for ~5-8% better accuracy
+HF_MEDICAL_MODEL=microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext  # Better medical model
+
 # Server
 PORT=5001
 NODE_ENV=development

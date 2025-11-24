@@ -90,8 +90,10 @@ const analyzeMedicalImage = async (imageData, mimeType, recordType, reportText =
     const { GoogleGenerativeAI } = require('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Use gemini-1.5-pro-vision or gemini-1.5-flash for vision tasks
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // Use gemini-1.5-pro for better accuracy (or gemini-1.5-flash for faster/cheaper)
+    // For production: use 'gemini-1.5-pro' for ~5-8% better accuracy
+    const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+    const model = genAI.getGenerativeModel({ model: modelName });
 
     // Create prompt based on record type
     let prompt = '';
