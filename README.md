@@ -1,3 +1,4 @@
+
 # Scanlytics - AI-Powered Healthcare Platform
 
 A React-based healthcare AI platform that provides instant medical scan analysis with 96.8% accuracy in 2.3 seconds. Built with TypeScript, Firebase, and MongoDB for secure medical data management.
@@ -138,3 +139,4 @@ The platform implements several DSA concepts:
 - GitHub: [[ GitHub Profile](https://github.com/vijayKota2776)]
 - Email: vijaykota2776.com
 - LinkedIn: [[LinkedIn Profile]](https://www.linkedin.com/in/vijaykota2776/)
+
