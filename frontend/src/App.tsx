@@ -6,7 +6,6 @@ import PatientDashboard from './pages/PatientDashboard';
 import DoctorDashboard from './pages/DoctorDashboard';
 import HospitalDashboard from './pages/HospitalDashboard';
 import Presentation from './pages/Presentation';
-import './App.css';
 
 function App() {
   return (

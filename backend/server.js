@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 
 const app = express();
-const PORT = 5000;
+const PORT = 5001;
 
 // Middleware
 app.use(cors({
@@ -32,9 +32,9 @@ app.post('/api/v1/auth/login', handleLogin);
 
 function handleLogin(req, res) {
   const { email, password, role } = req.body;
-  
+
   console.log('🔐 Login attempt:', { email, password, role });
-  
+
   // Demo credentials for all roles
   const demoUsers = {
     'patient@demo.com': {
@@ -46,7 +46,7 @@ function handleLogin(req, res) {
       phone: '+1-555-0001'
     },
     'doctor@demo.com': {
-      id: 'user2', 
+      id: 'user2',
       name: 'Dr. Demo Doctor',
       email: 'doctor@demo.com',
       role: 'doctor',
@@ -56,15 +56,15 @@ function handleLogin(req, res) {
     'hospital@demo.com': {
       id: 'user3',
       name: 'Demo Hospital',
-      email: 'hospital@demo.com', 
+      email: 'hospital@demo.com',
       role: 'hospital',
       roleSpecificId: 'H001',
       hospitalName: 'Demo Hospital'
     }
   };
-  
+
   const user = demoUsers[email];
-  
+
   if (user && password === 'demo123') {
     console.log('✅ Login successful for:', email);
     res.json({
@@ -113,7 +113,7 @@ app.post('/api/patient/appointments', (req, res) => {
       ...req.body
     })
   };
-  
+
   console.log('📅 New appointment booked:', appointment);
   res.json(appointment);
 });
@@ -121,11 +121,11 @@ app.post('/api/patient/appointments', (req, res) => {
 // Catch all other requests
 app.use('*', (req, res) => {
   console.log('❓ Unmatched route:', req.method, req.originalUrl);
-  res.status(404).json({ 
+  res.status(404).json({
     message: `Route ${req.originalUrl} not found`,
     availableRoutes: [
       'GET /api/health',
-      'POST /api/auth/login', 
+      'POST /api/auth/login',
       'POST /api/v1/auth/login',
       'GET /api/patient/profile'
     ]

@@ -87,6 +87,10 @@ interface DoctorSettings {
     defaultAppointmentDuration: number;
     maxPatientsPerDay: number;
   };
+  emailNotifications: boolean;
+  smsAlerts: boolean;
+  darkMode: boolean;
+  autoSave: boolean;
 }
 
 const DoctorDashboard: React.FC = () => {
@@ -134,7 +138,11 @@ const DoctorDashboard: React.FC = () => {
       allowMarketingEmails: false,
       defaultAppointmentDuration: 30,
       maxPatientsPerDay: 20
-    }
+    },
+    emailNotifications: true,
+    smsAlerts: true,
+    darkMode: false,
+    autoSave: true
   });
   const [reportData] = useState<ReportData>({
     dailyConsultations: [8, 12, 15, 9, 18, 22, 16],
@@ -295,7 +303,7 @@ const DoctorDashboard: React.FC = () => {
     if (userData) {
       const parsedUser = JSON.parse(userData);
       setUser(parsedUser);
-      
+
       // Load doctor settings
       setDoctorSettings(prev => ({
         ...prev,
@@ -318,9 +326,9 @@ const DoctorDashboard: React.FC = () => {
 
   // Working button functions
   const handleScanReview = (scanId: string, approved: boolean, notes: string) => {
-    setPendingScans(prev => 
-      prev.map(scan => 
-        scan.scanId === scanId 
+    setPendingScans(prev =>
+      prev.map(scan =>
+        scan.scanId === scanId
           ? { ...scan, status: approved ? 'approved' : 'reviewed', doctorNotes: notes }
           : scan
       )
@@ -332,7 +340,7 @@ const DoctorDashboard: React.FC = () => {
   const addMedicalNotes = () => {
     const patientName = window.prompt('Enter patient name:');
     if (!patientName) return;
-    
+
     const notes = window.prompt(`Enter medical notes for ${patientName}:`);
     if (notes) {
       alert(`✅ Medical notes added for ${patientName}:\n\n"${notes}"\n\nNotes saved to patient record.`);
@@ -343,13 +351,13 @@ const DoctorDashboard: React.FC = () => {
     const avgConsultations = (reportData.dailyConsultations.reduce((a, b) => a + b, 0) / reportData.dailyConsultations.length).toFixed(1);
     const avgSatisfaction = (reportData.patientSatisfaction.reduce((a, b) => a + b, 0) / reportData.patientSatisfaction.length).toFixed(1);
     const avgAccuracy = (reportData.diagnosisAccuracy.reduce((a, b) => a + b, 0) / reportData.diagnosisAccuracy.length).toFixed(1);
-    
+
     alert(`📊 Your Performance Metrics:\n\n` +
-          `Daily Consultations (avg): ${avgConsultations}\n` +
-          `Patient Satisfaction: ${avgSatisfaction}/5.0\n` +
-          `Diagnosis Accuracy: ${avgAccuracy}%\n` +
-          `Total Patients: ${patients.length}\n` +
-          `Pending Reviews: ${pendingScans.filter(s => s.status === 'pending_review').length}`);
+      `Daily Consultations (avg): ${avgConsultations}\n` +
+      `Patient Satisfaction: ${avgSatisfaction}/5.0\n` +
+      `Diagnosis Accuracy: ${avgAccuracy}%\n` +
+      `Total Patients: ${patients.length}\n` +
+      `Pending Reviews: ${pendingScans.filter(s => s.status === 'pending_review').length}`);
   };
 
   const generateReport = () => {
@@ -374,14 +382,14 @@ const DoctorDashboard: React.FC = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
+
     alert('✅ Performance report downloaded successfully!');
   };
 
   const seePatient = (patient: PatientQueue) => {
-    setPatientQueue(prev => 
-      prev.map(p => 
-        p.patientId === patient.patientId 
+    setPatientQueue(prev =>
+      prev.map(p =>
+        p.patientId === patient.patientId
           ? { ...p, waitTime: 0 }
           : p
       )
@@ -393,7 +401,7 @@ const DoctorDashboard: React.FC = () => {
     const patient = patients.find(p => p.patientId === patientId);
     const date = window.prompt('Enter appointment date (YYYY-MM-DD):');
     const time = window.prompt('Enter appointment time (HH:MM AM/PM):');
-    
+
     if (date && time && patient) {
       alert(`✅ Appointment scheduled!\n\nPatient: ${patient.name}\nDate: ${date}\nTime: ${time}\n\nConfirmation sent to patient.`);
     }
@@ -439,79 +447,99 @@ const DoctorDashboard: React.FC = () => {
   };
 
   const renderOverview = () => (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Welcome Banner */}
+      <div className="rounded-[20px] p-8 text-white shadow-[0_7px_21px_0_rgba(27,68,254,0.03)] relative overflow-hidden" style={{ background: 'radial-gradient(50% 50%, rgb(27, 68, 254) 51.654%, rgb(83, 117, 254) 100%)' }}>
+        <div className="relative z-10">
+          <h2 className="text-[32px] font-semibold tracking-[-1.6px] mb-2">Welcome back, {user.name}</h2>
+          <p className="text-blue-100 text-lg">You have {pendingScans.filter(s => s.status === 'pending_review').length} pending reviews and {patientQueue.length} patients in queue today.</p>
+        </div>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl transform translate-x-1/3 -translate-y-1/3"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-900 opacity-10 rounded-full blur-2xl transform -translate-x-1/3 translate-y-1/3"></div>
+      </div>
+
       {/* Doctor Stats */}
       <div className="grid md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-red-500">
-          <div className="flex items-center">
-            <div className="text-3xl text-red-500 mr-4">🩺</div>
-            <div>
-              <p className="text-sm text-gray-600">Pending Reviews</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {pendingScans.filter(s => s.status === 'pending_review').length}
-              </p>
+        <div className="bg-white rounded-[20px] p-6 shadow-[0_7px_21px_0_rgba(27,68,254,0.03)] border border-gray-100 hover:shadow-[0_7px_21px_0_rgba(27,68,254,0.08)] transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-[12px] bg-red-50 flex items-center justify-center text-2xl">
+              🩺
             </div>
+            <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-1 rounded-full">Urgent</span>
           </div>
+          <p className="text-sm font-medium text-[#7a7a7a]">Pending Reviews</p>
+          <p className="text-[28px] font-bold text-[#0a0b10] mt-1">
+            {pendingScans.filter(s => s.status === 'pending_review').length}
+          </p>
         </div>
-        
-        <div className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-blue-500">
-          <div className="flex items-center">
-            <div className="text-3xl text-blue-500 mr-4">👥</div>
-            <div>
-              <p className="text-sm text-gray-600">Patients in Queue</p>
-              <p className="text-2xl font-bold text-gray-900">{patientQueue.length}</p>
+
+        <div className="bg-white rounded-[20px] p-6 shadow-[0_7px_21px_0_rgba(27,68,254,0.03)] border border-gray-100 hover:shadow-[0_7px_21px_0_rgba(27,68,254,0.08)] transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-[12px] bg-blue-50 flex items-center justify-center text-2xl">
+              👥
             </div>
+            <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">Waiting</span>
           </div>
+          <p className="text-sm font-medium text-[#7a7a7a]">Patients in Queue</p>
+          <p className="text-[28px] font-bold text-[#0a0b10] mt-1">{patientQueue.length}</p>
         </div>
-        
-        <div className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-green-500">
-          <div className="flex items-center">
-            <div className="text-3xl text-green-500 mr-4">✅</div>
-            <div>
-              <p className="text-sm text-gray-600">Total Patients</p>
-              <p className="text-2xl font-bold text-gray-900">{patients.length}</p>
+
+        <div className="bg-white rounded-[20px] p-6 shadow-[0_7px_21px_0_rgba(27,68,254,0.03)] border border-gray-100 hover:shadow-[0_7px_21px_0_rgba(27,68,254,0.08)] transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-[12px] bg-green-50 flex items-center justify-center text-2xl">
+              ✅
             </div>
+            <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">Total</span>
           </div>
+          <p className="text-sm font-medium text-[#7a7a7a]">Total Patients</p>
+          <p className="text-[28px] font-bold text-[#0a0b10] mt-1">{patients.length}</p>
         </div>
-        
-        <div className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-purple-500">
-          <div className="flex items-center">
-            <div className="text-3xl text-purple-500 mr-4">🎯</div>
-            <div>
-              <p className="text-sm text-gray-600">Avg Satisfaction</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {(reportData.patientSatisfaction.reduce((a, b) => a + b, 0) / reportData.patientSatisfaction.length).toFixed(1)}
-              </p>
+
+        <div className="bg-white rounded-[20px] p-6 shadow-[0_7px_21px_0_rgba(27,68,254,0.03)] border border-gray-100 hover:shadow-[0_7px_21px_0_rgba(27,68,254,0.08)] transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-[12px] bg-purple-50 flex items-center justify-center text-2xl">
+              🎯
             </div>
+            <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-1 rounded-full">Rating</span>
           </div>
+          <p className="text-sm font-medium text-[#7a7a7a]">Avg Satisfaction</p>
+          <p className="text-[28px] font-bold text-[#0a0b10] mt-1">
+            {(reportData.patientSatisfaction.reduce((a, b) => a + b, 0) / reportData.patientSatisfaction.length).toFixed(1)}
+          </p>
         </div>
       </div>
 
       {/* Patient Queue */}
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h3 className="text-xl font-bold text-gray-900 mb-4">Patient Queue (Priority-Based)</h3>
-        <div className="space-y-4">
+      <div className="bg-white rounded-[20px] p-8 shadow-[0_7px_21px_0_rgba(27,68,254,0.03)] border border-gray-100">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-[20px] font-semibold text-[#0a0b10] tracking-[-0.8px]">Patient Queue</h3>
+          <span className="text-sm font-medium text-[#7a7a7a]">Priority-Based</span>
+        </div>
+        <div className="space-y-3">
           {patientQueue.sort((a, b) => b.priority - a.priority).map(patient => (
-            <div key={patient.patientId} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div key={patient.patientId} className="flex items-center justify-between p-5 bg-[#f8f9fa] rounded-[16px] border border-gray-100 hover:border-gray-200 transition-all">
               <div className="flex items-center">
                 <div className="mr-4">
-                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getPriorityColor(patient.priority)}`}>
+                  <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${getPriorityColor(patient.priority)}`}>
                     {getPriorityLabel(patient.priority)}
                   </span>
                 </div>
                 <div>
-                  <h4 className="font-semibold text-gray-900">{patient.patientName}</h4>
-                  <p className="text-sm text-gray-600">ID: {patient.patientId} • Age: {patient.age}</p>
-                  <p className="text-sm text-gray-600">Symptoms: {patient.symptoms.join(', ')}</p>
-                  <p className="text-sm text-gray-500">Contact: {patient.contact}</p>
+                  <h4 className="font-semibold text-[#0a0b10] text-[16px]">{patient.patientName}</h4>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-[#7a7a7a] bg-white px-2 py-0.5 rounded border border-gray-100">ID: {patient.patientId}</span>
+                    <span className="text-xs text-[#7a7a7a]">Age: {patient.age}</span>
+                  </div>
+                  <p className="text-sm text-[#7a7a7a] mt-1">Symptoms: {patient.symptoms.join(', ')}</p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-600">Scheduled: {patient.appointmentTime}</p>
-                <p className="text-sm text-gray-600">Waiting: {patient.waitTime} min</p>
-                <button 
+              <div className="text-right flex flex-col items-end gap-2">
+                <div className="text-sm font-medium text-[#0a0b10]">{patient.appointmentTime}</div>
+                <div className="text-xs text-[#7a7a7a]">Wait: {patient.waitTime} min</div>
+                <button
                   onClick={() => seePatient(patient)}
-                  className="mt-2 bg-blue-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-600"
+                  className="mt-1 px-4 py-2 rounded-[8px] text-sm font-medium text-white shadow-[0_4px_12px_0_rgba(27,68,254,0.2)] hover:shadow-[0_6px_16px_0_rgba(27,68,254,0.3)] transition-all"
+                  style={{ background: 'radial-gradient(50% 50%, rgb(27, 68, 254) 51.654%, rgb(83, 117, 254) 100%)' }}
                 >
                   See Patient
                 </button>
@@ -523,94 +551,103 @@ const DoctorDashboard: React.FC = () => {
 
       {/* Quick Actions */}
       <div className="grid md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg shadow-lg p-6 text-center">
-          <div className="text-4xl mb-4">📝</div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Add Medical Notes</h3>
-          <p className="text-gray-600 mb-4">Document patient consultations and treatments</p>
-          <button 
-            onClick={addMedicalNotes}
-            className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
-          >
-            Add Notes
-          </button>
+        <div className="bg-white rounded-[20px] p-6 shadow-[0_7px_21px_0_rgba(27,68,254,0.03)] border border-gray-100 hover:shadow-[0_7px_21px_0_rgba(27,68,254,0.08)] transition-all text-center group cursor-pointer" onClick={addMedicalNotes}>
+          <div className="w-14 h-14 rounded-[16px] bg-green-50 flex items-center justify-center text-3xl mx-auto mb-4 group-hover:scale-110 transition-transform">📝</div>
+          <h3 className="text-[18px] font-semibold text-[#0a0b10] mb-2">Add Medical Notes</h3>
+          <p className="text-[#7a7a7a] text-sm mb-4">Document patient consultations and treatments</p>
+          <span className="text-green-600 font-medium text-sm">Add Notes →</span>
         </div>
-        
-        <div className="bg-white rounded-lg shadow-lg p-6 text-center">
-          <div className="text-4xl mb-4">📊</div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Performance Metrics</h3>
-          <p className="text-gray-600 mb-4">View your diagnostic accuracy and patient feedback</p>
-          <button 
-            onClick={viewPerformanceMetrics}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
-          >
-            View Metrics
-          </button>
+
+        <div className="bg-white rounded-[20px] p-6 shadow-[0_7px_21px_0_rgba(27,68,254,0.03)] border border-gray-100 hover:shadow-[0_7px_21px_0_rgba(27,68,254,0.08)] transition-all text-center group cursor-pointer" onClick={viewPerformanceMetrics}>
+          <div className="w-14 h-14 rounded-[16px] bg-blue-50 flex items-center justify-center text-3xl mx-auto mb-4 group-hover:scale-110 transition-transform">📊</div>
+          <h3 className="text-[18px] font-semibold text-[#0a0b10] mb-2">Performance Metrics</h3>
+          <p className="text-[#7a7a7a] text-sm mb-4">View your diagnostic accuracy and patient feedback</p>
+          <span className="text-[#1B44FE] font-medium text-sm">View Metrics →</span>
         </div>
-        
-        <div className="bg-white rounded-lg shadow-lg p-6 text-center">
-          <div className="text-4xl mb-4">📱</div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Generate Report</h3>
-          <p className="text-gray-600 mb-4">Create comprehensive patient reports</p>
-          <button 
-            onClick={generateReport}
-            className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600"
-          >
-            Generate
-          </button>
+
+        <div className="bg-white rounded-[20px] p-6 shadow-[0_7px_21px_0_rgba(27,68,254,0.03)] border border-gray-100 hover:shadow-[0_7px_21px_0_rgba(27,68,254,0.08)] transition-all text-center group cursor-pointer" onClick={generateReport}>
+          <div className="w-14 h-14 rounded-[16px] bg-purple-50 flex items-center justify-center text-3xl mx-auto mb-4 group-hover:scale-110 transition-transform">📱</div>
+          <h3 className="text-[18px] font-semibold text-[#0a0b10] mb-2">Generate Report</h3>
+          <p className="text-[#7a7a7a] text-sm mb-4">Create comprehensive patient reports</p>
+          <span className="text-purple-600 font-medium text-sm">Generate →</span>
         </div>
       </div>
     </div>
   );
 
   const renderAIReviews = () => (
-    <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h3 className="text-xl font-bold text-gray-900 mb-4">AI Analysis Reviews Required</h3>
+    <div className="space-y-8">
+      <div className="bg-white rounded-[20px] shadow-[0_7px_21px_0_rgba(27,68,254,0.03)] p-8 border border-gray-100">
+        <h3 className="text-[24px] font-semibold text-[#0a0b10] tracking-[-0.8px] mb-6">AI Analysis Reviews Required</h3>
         <div className="space-y-4">
           {pendingScans.filter(scan => scan.status === 'pending_review').map(scan => (
-            <div key={scan.scanId} className="border border-gray-200 rounded-lg p-6">
-              <div className="flex justify-between items-start mb-4">
+            <div key={scan.scanId} className="border border-gray-100 rounded-[16px] p-6 hover:border-gray-200 transition-all bg-[#f8f9fa]">
+              <div className="flex justify-between items-start mb-6">
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-900">
+                  <h4 className="text-[18px] font-semibold text-[#0a0b10] mb-1">
                     {scan.patientName} - {scan.scanType}
                   </h4>
-                  <p className="text-gray-600">Patient ID: {scan.patientId}</p>
-                  <p className="text-gray-600">Scan Date: {new Date(scan.date).toLocaleDateString()}</p>
-                  <p className="text-gray-600">AI Confidence: {(scan.aiAnalysis.confidence * 100).toFixed(1)}%</p>
+                  <div className="flex items-center gap-3 text-sm text-[#7a7a7a]">
+                    <span className="bg-white px-2 py-0.5 rounded border border-gray-100">ID: {scan.patientId}</span>
+                    <span>•</span>
+                    <span>{new Date(scan.date).toLocaleDateString()}</span>
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    <span className="text-sm font-medium text-[#0a0b10]">AI Confidence:</span>
+                    <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-[#1B44FE] rounded-full"
+                        style={{ width: `${scan.aiAnalysis.confidence * 100}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-bold text-[#1B44FE]">{(scan.aiAnalysis.confidence * 100).toFixed(1)}%</span>
+                  </div>
                 </div>
-                <div className="flex space-x-2">
-                  <button 
-                    onClick={() => setSelectedScan(scan)}
-                    className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
-                  >
-                    Review Analysis
-                  </button>
-                </div>
+                <button
+                  onClick={() => setSelectedScan(scan)}
+                  className="px-5 py-2.5 rounded-[12px] text-sm font-semibold text-white shadow-[0_4px_12px_0_rgba(27,68,254,0.2)] hover:shadow-[0_6px_16px_0_rgba(27,68,254,0.3)] transition-all"
+                  style={{ background: 'radial-gradient(50% 50%, rgb(27, 68, 254) 51.654%, rgb(83, 117, 254) 100%)' }}
+                >
+                  Review Analysis
+                </button>
               </div>
-              
-              <div className="grid md:grid-cols-2 gap-4 bg-gray-50 rounded-lg p-4">
+
+              <div className="grid md:grid-cols-2 gap-6 bg-white rounded-[12px] p-5 border border-gray-100">
                 <div>
-                  <h5 className="font-semibold text-gray-800 mb-2">AI Findings:</h5>
-                  <ul className="list-disc list-inside space-y-1">
+                  <h5 className="font-semibold text-[#0a0b10] mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                    AI Findings
+                  </h5>
+                  <ul className="space-y-2">
                     {scan.aiAnalysis.findings.map((finding, index) => (
-                      <li key={index} className="text-sm text-gray-600">{finding}</li>
+                      <li key={index} className="text-sm text-[#7a7a7a] flex items-start gap-2">
+                        <span className="mt-1.5 w-1 h-1 rounded-full bg-gray-300 shrink-0"></span>
+                        {finding}
+                      </li>
                     ))}
                   </ul>
                 </div>
                 <div>
-                  <h5 className="font-semibold text-gray-800 mb-2">AI Recommendations:</h5>
-                  <ul className="list-disc list-inside space-y-1">
+                  <h5 className="font-semibold text-[#0a0b10] mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                    AI Recommendations
+                  </h5>
+                  <ul className="space-y-2">
                     {scan.aiAnalysis.recommendations.map((rec, index) => (
-                      <li key={index} className="text-sm text-gray-600">{rec}</li>
+                      <li key={index} className="text-sm text-[#7a7a7a] flex items-start gap-2">
+                        <span className="mt-1.5 w-1 h-1 rounded-full bg-gray-300 shrink-0"></span>
+                        {rec}
+                      </li>
                     ))}
                   </ul>
                 </div>
               </div>
-              
+
               {scan.aiAnalysis.requiresReview && (
-                <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                  <p className="text-yellow-800 font-medium">
-                    ⚠️ AI recommends doctor review due to confidence level or critical findings
+                <div className="mt-4 bg-yellow-50 border border-yellow-100 rounded-[12px] p-4 flex items-center gap-3">
+                  <span className="text-xl">⚠️</span>
+                  <p className="text-yellow-800 font-medium text-sm">
+                    AI recommends doctor review due to confidence level or critical findings
                   </p>
                 </div>
               )}
@@ -620,26 +657,34 @@ const DoctorDashboard: React.FC = () => {
       </div>
 
       {/* Reviewed Scans */}
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h3 className="text-xl font-bold text-gray-900 mb-4">Recently Reviewed</h3>
+      <div className="bg-white rounded-[20px] shadow-[0_7px_21px_0_rgba(27,68,254,0.03)] p-8 border border-gray-100">
+        <h3 className="text-[24px] font-semibold text-[#0a0b10] tracking-[-0.8px] mb-6">Recently Reviewed</h3>
         <div className="space-y-4">
           {pendingScans.filter(scan => scan.status !== 'pending_review').map(scan => (
-            <div key={scan.scanId} className="border border-gray-200 rounded-lg p-6 opacity-75">
+            <div key={scan.scanId} className="border border-gray-100 rounded-[16px] p-6 opacity-75 hover:opacity-100 transition-all bg-[#f8f9fa]">
               <div className="flex justify-between items-start">
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-900">
+                  <h4 className="text-[18px] font-semibold text-[#0a0b10] mb-1">
                     {scan.patientName} - {scan.scanType}
                   </h4>
-                  <p className="text-gray-600">Status: {scan.status}</p>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-sm text-[#7a7a7a]">Status:</span>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 capitalize">
+                      {scan.status.replace('_', ' ')}
+                    </span>
+                  </div>
                   {scan.doctorNotes && (
-                    <p className="text-gray-800 mt-2">
-                      <strong>Doctor Notes:</strong> {scan.doctorNotes}
-                    </p>
+                    <div className="bg-white p-3 rounded-[8px] border border-gray-100 inline-block">
+                      <p className="text-sm text-[#0a0b10]">
+                        <span className="font-medium text-[#7a7a7a] mr-2">Notes:</span>
+                        {scan.doctorNotes}
+                      </p>
+                    </div>
                   )}
                 </div>
-                <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
-                  ✅ {scan.status}
-                </span>
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xl">
+                  ✅
+                </div>
               </div>
             </div>
           ))}
@@ -648,66 +693,74 @@ const DoctorDashboard: React.FC = () => {
 
       {/* Review Modal */}
       {selectedScan && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4">
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">
-              Review AI Analysis - {selectedScan.patientName}
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-[24px] p-8 max-w-2xl w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+            <h3 className="text-[24px] font-bold text-[#0a0b10] mb-2 tracking-[-0.8px]">
+              Review AI Analysis
             </h3>
-            
-            <div className="space-y-4 mb-6">
-              <div>
-                <h4 className="font-semibold text-gray-800">AI Findings:</h4>
-                <ul className="list-disc list-inside mt-2">
+            <p className="text-[#7a7a7a] mb-6">Patient: {selectedScan.patientName} • ID: {selectedScan.patientId}</p>
+
+            <div className="space-y-6 mb-8">
+              <div className="bg-[#f8f9fa] rounded-[16px] p-6 border border-gray-100">
+                <h4 className="font-semibold text-[#0a0b10] mb-3">AI Findings</h4>
+                <ul className="space-y-2">
                   {selectedScan.aiAnalysis.findings.map((finding, index) => (
-                    <li key={index} className="text-gray-600">{finding}</li>
+                    <li key={index} className="text-[#7a7a7a] text-sm flex items-start gap-2">
+                      <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0"></span>
+                      {finding}
+                    </li>
                   ))}
                 </ul>
               </div>
-              
-              <div>
-                <h4 className="font-semibold text-gray-800">AI Recommendations:</h4>
-                <ul className="list-disc list-inside mt-2">
+
+              <div className="bg-[#f8f9fa] rounded-[16px] p-6 border border-gray-100">
+                <h4 className="font-semibold text-[#0a0b10] mb-3">AI Recommendations</h4>
+                <ul className="space-y-2">
                   {selectedScan.aiAnalysis.recommendations.map((rec, index) => (
-                    <li key={index} className="text-gray-600">{rec}</li>
+                    <li key={index} className="text-[#7a7a7a] text-sm flex items-start gap-2">
+                      <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
+                      {rec}
+                    </li>
                   ))}
                 </ul>
               </div>
             </div>
-            
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Doctor Notes & Recommendations:
+
+            <div className="mb-8">
+              <label className="block text-sm font-medium text-[#0a0b10] mb-2">
+                Doctor Notes & Recommendations
               </label>
-              <textarea 
+              <textarea
                 id="doctorNotes"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 border border-gray-200 rounded-[12px] focus:ring-2 focus:ring-[#1B44FE] focus:border-transparent outline-none transition-all resize-none text-sm"
                 rows={4}
                 placeholder="Add your professional assessment and recommendations..."
               />
             </div>
-            
-            <div className="flex justify-end space-x-4">
-              <button 
+
+            <div className="flex justify-end items-center gap-3 pt-4 border-t border-gray-100">
+              <button
                 onClick={() => setSelectedScan(null)}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-6 py-2.5 border border-gray-200 rounded-[12px] text-sm font-medium text-[#7a7a7a] hover:bg-gray-50 transition-all"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={() => {
                   const notes = (document.getElementById('doctorNotes') as HTMLTextAreaElement).value;
                   handleScanReview(selectedScan.scanId, false, notes || 'Needs additional testing');
                 }}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                className="px-6 py-2.5 bg-red-50 text-red-600 rounded-[12px] text-sm font-medium hover:bg-red-100 transition-all"
               >
                 Reject Analysis
               </button>
-              <button 
+              <button
                 onClick={() => {
                   const notes = (document.getElementById('doctorNotes') as HTMLTextAreaElement).value;
                   handleScanReview(selectedScan.scanId, true, notes || 'Analysis approved');
                 }}
-                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                className="px-6 py-2.5 rounded-[12px] text-sm font-semibold text-white shadow-[0_4px_12px_0_rgba(27,68,254,0.2)] hover:shadow-[0_6px_16px_0_rgba(27,68,254,0.3)] transition-all"
+                style={{ background: 'radial-gradient(50% 50%, rgb(27, 68, 254) 51.654%, rgb(83, 117, 254) 100%)' }}
               >
                 Approve Analysis
               </button>
@@ -719,31 +772,32 @@ const DoctorDashboard: React.FC = () => {
   );
 
   const renderPatientManagement = () => {
-    const filteredPatients = patients.filter(patient => 
+    const filteredPatients = patients.filter(patient =>
       patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       patient.patientId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       patient.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Patient Search and Actions */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-gray-900">Patient Management</h3>
+        <div className="bg-white rounded-[20px] shadow-[0_7px_21px_0_rgba(27,68,254,0.03)] p-8 border border-gray-100">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-[24px] font-semibold text-[#0a0b10] tracking-[-0.8px]">Patient Management</h3>
             <div className="flex space-x-4">
               <input
                 type="text"
                 placeholder="Search patients..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="px-4 py-2.5 border border-gray-200 rounded-[12px] focus:ring-2 focus:ring-[#1B44FE] focus:border-transparent outline-none w-64 text-sm"
               />
-              <button 
+              <button
                 onClick={() => alert('📝 Add new patient functionality would open here')}
-                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
+                className="px-5 py-2.5 rounded-[12px] text-sm font-semibold text-white shadow-[0_4px_12px_0_rgba(27,68,254,0.2)] hover:shadow-[0_6px_16px_0_rgba(27,68,254,0.3)] transition-all flex items-center gap-2"
+                style={{ background: 'radial-gradient(50% 50%, rgb(27, 68, 254) 51.654%, rgb(83, 117, 254) 100%)' }}
               >
-                ➕ Add Patient
+                <span>➕</span> Add Patient
               </button>
             </div>
           </div>
@@ -751,72 +805,77 @@ const DoctorDashboard: React.FC = () => {
           {/* Patient List */}
           <div className="space-y-4">
             {filteredPatients.map(patient => (
-              <div key={patient.patientId} className="border border-gray-200 rounded-lg p-4">
+              <div key={patient.patientId} className="border border-gray-100 rounded-[16px] p-6 hover:border-gray-200 transition-all bg-[#f8f9fa]">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center space-x-4">
                       <div>
-                        <h4 className="text-lg font-semibold text-gray-900">{patient.name}</h4>
-                        <p className="text-sm text-gray-600">
-                          ID: {patient.patientId} • Age: {patient.age} • {patient.gender}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          📞 {patient.contact} • 📧 {patient.email}
-                        </p>
+                        <h4 className="text-[18px] font-semibold text-[#0a0b10] mb-1">{patient.name}</h4>
+                        <div className="flex items-center gap-3 text-sm text-[#7a7a7a]">
+                          <span className="bg-white px-2 py-0.5 rounded border border-gray-100">ID: {patient.patientId}</span>
+                          <span>•</span>
+                          <span>{patient.age} years</span>
+                          <span>•</span>
+                          <span>{patient.gender}</span>
+                        </div>
+                        <div className="mt-2 text-sm text-[#7a7a7a] flex items-center gap-4">
+                          <span className="flex items-center gap-1">📞 {patient.contact}</span>
+                          <span className="flex items-center gap-1">📧 {patient.email}</span>
+                        </div>
                       </div>
                     </div>
-                    
-                    <div className="mt-4 grid md:grid-cols-3 gap-4">
-                      <div>
-                        <h5 className="font-medium text-gray-800 mb-1">Medical Info</h5>
-                        <p className="text-sm text-gray-600">Last Visit: {new Date(patient.lastVisit).toLocaleDateString()}</p>
-                        <p className="text-sm text-gray-600">Total Visits: {patient.totalVisits}</p>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          patient.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {patient.status}
+
+                    <div className="mt-6 grid md:grid-cols-3 gap-6">
+                      <div className="bg-white p-4 rounded-[12px] border border-gray-100">
+                        <h5 className="font-medium text-[#0a0b10] mb-2 text-sm">Medical Info</h5>
+                        <p className="text-sm text-[#7a7a7a]">Last Visit: {new Date(patient.lastVisit).toLocaleDateString()}</p>
+                        <p className="text-sm text-[#7a7a7a]">Total Visits: {patient.totalVisits}</p>
+                        <span className={`mt-2 inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${patient.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                          }`}>
+                          {patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}
                         </span>
                       </div>
-                      
-                      <div>
-                        <h5 className="font-medium text-gray-800 mb-1">Conditions & Medications</h5>
-                        <p className="text-sm text-gray-600">
-                          <strong>Conditions:</strong> {patient.chronicConditions.join(', ') || 'None'}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <strong>Medications:</strong> {patient.currentMedications.join(', ') || 'None'}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <strong>Allergies:</strong> {patient.allergies.join(', ') || 'None'}
-                        </p>
+
+                      <div className="bg-white p-4 rounded-[12px] border border-gray-100 md:col-span-2">
+                        <h5 className="font-medium text-[#0a0b10] mb-2 text-sm">Conditions & Medications</h5>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-xs font-medium text-[#7a7a7a] uppercase tracking-wider mb-1">Conditions</p>
+                            <p className="text-sm text-[#0a0b10]">{patient.chronicConditions.join(', ') || 'None'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-[#7a7a7a] uppercase tracking-wider mb-1">Medications</p>
+                            <p className="text-sm text-[#0a0b10]">{patient.currentMedications.join(', ') || 'None'}</p>
+                          </div>
+                        </div>
                       </div>
-                      
-                      <div className="flex flex-col space-y-2">
-                        <button 
-                          onClick={() => setSelectedPatient(patient)}
-                          className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
-                        >
-                          👁️ View Details
-                        </button>
-                        <button 
-                          onClick={() => scheduleAppointment(patient.patientId)}
-                          className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600"
-                        >
-                          📅 Schedule
-                        </button>
-                        <button 
-                          onClick={() => updatePatientRecord(patient)}
-                          className="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600"
-                        >
-                          📝 Update
-                        </button>
-                        <button 
-                          onClick={() => contactPatient(patient)}
-                          className="bg-purple-500 text-white px-3 py-1 rounded text-sm hover:bg-purple-600"
-                        >
-                          📞 Contact
-                        </button>
-                      </div>
+                    </div>
+
+                    <div className="mt-6 flex flex-wrap gap-3">
+                      <button
+                        onClick={() => setSelectedPatient(patient)}
+                        className="px-4 py-2 bg-white border border-gray-200 rounded-[8px] text-sm font-medium text-[#0a0b10] hover:bg-gray-50 transition-all"
+                      >
+                        👁️ View Details
+                      </button>
+                      <button
+                        onClick={() => scheduleAppointment(patient.patientId)}
+                        className="px-4 py-2 bg-white border border-gray-200 rounded-[8px] text-sm font-medium text-[#0a0b10] hover:bg-gray-50 transition-all"
+                      >
+                        📅 Schedule
+                      </button>
+                      <button
+                        onClick={() => updatePatientRecord(patient)}
+                        className="px-4 py-2 bg-white border border-gray-200 rounded-[8px] text-sm font-medium text-[#0a0b10] hover:bg-gray-50 transition-all"
+                      >
+                        📝 Update
+                      </button>
+                      <button
+                        onClick={() => contactPatient(patient)}
+                        className="px-4 py-2 bg-white border border-gray-200 rounded-[8px] text-sm font-medium text-[#0a0b10] hover:bg-gray-50 transition-all"
+                      >
+                        📞 Contact
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -825,134 +884,140 @@ const DoctorDashboard: React.FC = () => {
           </div>
 
           {filteredPatients.length === 0 && (
-            <div className="text-center py-8">
-              <p className="text-gray-500">No patients found matching your search.</p>
+            <div className="text-center py-16 bg-[#f8f9fa] rounded-[20px] border border-dashed border-gray-200">
+              <p className="text-[#7a7a7a]">No patients found matching your search.</p>
             </div>
           )}
         </div>
 
         {/* Patient Details Modal */}
         {selectedPatient && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-[24px] p-8 max-w-2xl w-full shadow-2xl animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">Patient Details</h3>
-                <button 
+                <h3 className="text-[24px] font-bold text-[#0a0b10] tracking-[-0.8px]">Patient Details</h3>
+                <button
                   onClick={() => setSelectedPatient(null)}
-                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                  className="text-[#7a7a7a] hover:text-[#0a0b10] text-2xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-all"
                 >
                   ✕
                 </button>
               </div>
-              
-              <div className="space-y-6">
+
+              <div className="space-y-8">
                 {/* Basic Info */}
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-3">Basic Information</h4>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <p><strong>Name:</strong> {selectedPatient.name}</p>
-                      <p><strong>Age:</strong> {selectedPatient.age}</p>
-                      <p><strong>Gender:</strong> {selectedPatient.gender}</p>
+                  <h4 className="text-[18px] font-semibold text-[#0a0b10] mb-4 border-b border-gray-100 pb-2">Basic Information</h4>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <p className="text-sm"><span className="text-[#7a7a7a]">Name:</span> <span className="font-medium text-[#0a0b10] ml-2">{selectedPatient.name}</span></p>
+                      <p className="text-sm"><span className="text-[#7a7a7a]">Age:</span> <span className="font-medium text-[#0a0b10] ml-2">{selectedPatient.age}</span></p>
+                      <p className="text-sm"><span className="text-[#7a7a7a]">Gender:</span> <span className="font-medium text-[#0a0b10] ml-2">{selectedPatient.gender}</span></p>
                     </div>
-                    <div>
-                      <p><strong>Patient ID:</strong> {selectedPatient.patientId}</p>
-                      <p><strong>Phone:</strong> {selectedPatient.contact}</p>
-                      <p><strong>Email:</strong> {selectedPatient.email}</p>
+                    <div className="space-y-2">
+                      <p className="text-sm"><span className="text-[#7a7a7a]">Patient ID:</span> <span className="font-medium text-[#0a0b10] ml-2">{selectedPatient.patientId}</span></p>
+                      <p className="text-sm"><span className="text-[#7a7a7a]">Phone:</span> <span className="font-medium text-[#0a0b10] ml-2">{selectedPatient.contact}</span></p>
+                      <p className="text-sm"><span className="text-[#7a7a7a]">Email:</span> <span className="font-medium text-[#0a0b10] ml-2">{selectedPatient.email}</span></p>
                     </div>
                   </div>
                 </div>
 
                 {/* Medical History */}
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-3">Medical History</h4>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p><strong>Last Visit:</strong> {new Date(selectedPatient.lastVisit).toLocaleDateString()}</p>
-                    <p><strong>Total Visits:</strong> {selectedPatient.totalVisits}</p>
-                    <p><strong>Status:</strong> 
-                      <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
-                        selectedPatient.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {selectedPatient.status}
+                  <h4 className="text-[18px] font-semibold text-[#0a0b10] mb-4 border-b border-gray-100 pb-2">Medical History</h4>
+                  <div className="bg-[#f8f9fa] rounded-[16px] p-6 border border-gray-100 grid grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-xs text-[#7a7a7a] uppercase tracking-wider mb-1">Last Visit</p>
+                      <p className="font-medium text-[#0a0b10]">{new Date(selectedPatient.lastVisit).toLocaleDateString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-[#7a7a7a] uppercase tracking-wider mb-1">Total Visits</p>
+                      <p className="font-medium text-[#0a0b10]">{selectedPatient.totalVisits}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-[#7a7a7a] uppercase tracking-wider mb-1">Status</p>
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${selectedPatient.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                        }`}>
+                        {selectedPatient.status.charAt(0).toUpperCase() + selectedPatient.status.slice(1)}
                       </span>
-                    </p>
+                    </div>
                   </div>
                 </div>
 
                 {/* Medical Details */}
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid md:grid-cols-3 gap-6">
                   <div>
-                    <h5 className="font-medium text-gray-800 mb-2">Chronic Conditions</h5>
-                    <div className="bg-blue-50 rounded p-3">
+                    <h5 className="font-medium text-[#0a0b10] mb-3">Chronic Conditions</h5>
+                    <div className="bg-blue-50 rounded-[12px] p-4 h-full">
                       {selectedPatient.chronicConditions.length > 0 ? (
-                        <ul className="list-disc list-inside text-sm">
+                        <ul className="list-disc list-inside text-sm text-blue-900 space-y-1">
                           {selectedPatient.chronicConditions.map((condition, index) => (
                             <li key={index}>{condition}</li>
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-sm text-gray-600">None</p>
+                        <p className="text-sm text-blue-700">None</p>
                       )}
                     </div>
                   </div>
-                  
+
                   <div>
-                    <h5 className="font-medium text-gray-800 mb-2">Current Medications</h5>
-                    <div className="bg-green-50 rounded p-3">
+                    <h5 className="font-medium text-[#0a0b10] mb-3">Current Medications</h5>
+                    <div className="bg-green-50 rounded-[12px] p-4 h-full">
                       {selectedPatient.currentMedications.length > 0 ? (
-                        <ul className="list-disc list-inside text-sm">
+                        <ul className="list-disc list-inside text-sm text-green-900 space-y-1">
                           {selectedPatient.currentMedications.map((med, index) => (
                             <li key={index}>{med}</li>
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-sm text-gray-600">None</p>
+                        <p className="text-sm text-green-700">None</p>
                       )}
                     </div>
                   </div>
-                  
+
                   <div>
-                    <h5 className="font-medium text-gray-800 mb-2">Allergies</h5>
-                    <div className="bg-red-50 rounded p-3">
+                    <h5 className="font-medium text-[#0a0b10] mb-3">Allergies</h5>
+                    <div className="bg-red-50 rounded-[12px] p-4 h-full">
                       {selectedPatient.allergies.length > 0 ? (
-                        <ul className="list-disc list-inside text-sm">
+                        <ul className="list-disc list-inside text-sm text-red-900 space-y-1">
                           {selectedPatient.allergies.map((allergy, index) => (
                             <li key={index}>{allergy}</li>
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-sm text-gray-600">None</p>
+                        <p className="text-sm text-red-700">None</p>
                       )}
                     </div>
                   </div>
                 </div>
 
                 {/* Quick Actions */}
-                <div className="flex space-x-4">
-                  <button 
+                <div className="flex flex-wrap gap-4 pt-4 border-t border-gray-100">
+                  <button
                     onClick={() => {
                       scheduleAppointment(selectedPatient.patientId);
                       setSelectedPatient(null);
                     }}
-                    className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
+                    className="px-5 py-2.5 bg-white border border-gray-200 rounded-[12px] text-sm font-medium text-[#0a0b10] hover:bg-gray-50 transition-all shadow-sm"
                   >
                     📅 Schedule Appointment
                   </button>
-                  <button 
+                  <button
                     onClick={() => {
                       updatePatientRecord(selectedPatient);
                       setSelectedPatient(null);
                     }}
-                    className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+                    className="px-5 py-2.5 bg-white border border-gray-200 rounded-[12px] text-sm font-medium text-[#0a0b10] hover:bg-gray-50 transition-all shadow-sm"
                   >
                     📝 Update Record
                   </button>
-                  <button 
+                  <button
                     onClick={() => {
                       contactPatient(selectedPatient);
                       setSelectedPatient(null);
                     }}
-                    className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600"
+                    className="px-5 py-2.5 bg-white border border-gray-200 rounded-[12px] text-sm font-medium text-[#0a0b10] hover:bg-gray-50 transition-all shadow-sm"
                   >
                     📞 Contact Patient
                   </button>
@@ -1015,47 +1080,48 @@ const DoctorDashboard: React.FC = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
+
       alert('✅ Detailed report exported successfully!');
     };
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Performance Overview */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-gray-900">📊 Performance Reports & Analytics</h3>
-            <button 
+        <div className="bg-white rounded-[20px] shadow-[0_7px_21px_0_rgba(27,68,254,0.03)] p-8 border border-gray-100">
+          <div className="flex justify-between items-center mb-8">
+            <h3 className="text-[24px] font-semibold text-[#0a0b10] tracking-[-0.8px]">📊 Performance Reports & Analytics</h3>
+            <button
               onClick={exportDetailedReport}
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+              className="px-5 py-2.5 rounded-[12px] text-sm font-semibold text-white shadow-[0_4px_12px_0_rgba(27,68,254,0.2)] hover:shadow-[0_6px_16px_0_rgba(27,68,254,0.3)] transition-all flex items-center gap-2"
+              style={{ background: 'radial-gradient(50% 50%, rgb(27, 68, 254) 51.654%, rgb(83, 117, 254) 100%)' }}
             >
-              📥 Export Detailed Report
+              <span>📥</span> Export Detailed Report
             </button>
           </div>
 
           {/* Key Metrics */}
           <div className="grid md:grid-cols-4 gap-6 mb-8">
-            <div className="text-center p-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg">
-              <h4 className="text-lg font-semibold mb-2">Weekly Consultations</h4>
-              <p className="text-3xl font-bold">{totalConsultations}</p>
+            <div className="text-center p-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-[20px] shadow-lg shadow-blue-200">
+              <h4 className="text-lg font-semibold mb-2 opacity-90">Weekly Consultations</h4>
+              <p className="text-4xl font-bold mb-1">{totalConsultations}</p>
               <p className="text-sm opacity-80">{(totalConsultations / 7).toFixed(1)} per day avg</p>
             </div>
-            
-            <div className="text-center p-6 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-lg">
-              <h4 className="text-lg font-semibold mb-2">Patient Satisfaction</h4>
-              <p className="text-3xl font-bold">{avgSatisfaction}/5.0</p>
+
+            <div className="text-center p-6 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-[20px] shadow-lg shadow-green-200">
+              <h4 className="text-lg font-semibold mb-2 opacity-90">Patient Satisfaction</h4>
+              <p className="text-4xl font-bold mb-1">{avgSatisfaction}/5.0</p>
               <p className="text-sm opacity-80">⭐ Excellent rating</p>
             </div>
-            
-            <div className="text-center p-6 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg">
-              <h4 className="text-lg font-semibold mb-2">Diagnosis Accuracy</h4>
-              <p className="text-3xl font-bold">{avgAccuracy}%</p>
+
+            <div className="text-center p-6 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-[20px] shadow-lg shadow-purple-200">
+              <h4 className="text-lg font-semibold mb-2 opacity-90">Diagnosis Accuracy</h4>
+              <p className="text-4xl font-bold mb-1">{avgAccuracy}%</p>
               <p className="text-sm opacity-80">Above average</p>
             </div>
-            
-            <div className="text-center p-6 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-lg">
-              <h4 className="text-lg font-semibold mb-2">Treatment Success</h4>
-              <p className="text-3xl font-bold">{avgSuccess}%</p>
+
+            <div className="text-center p-6 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-[20px] shadow-lg shadow-orange-200">
+              <h4 className="text-lg font-semibold mb-2 opacity-90">Treatment Success</h4>
+              <p className="text-4xl font-bold mb-1">{avgSuccess}%</p>
               <p className="text-sm opacity-80">Success rate</p>
             </div>
           </div>
@@ -1063,42 +1129,42 @@ const DoctorDashboard: React.FC = () => {
           {/* Charts and Trends */}
           <div className="grid md:grid-cols-2 gap-8">
             {/* Daily Consultations */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">📈 Daily Consultations (Last 7 Days)</h4>
-              <div className="space-y-3">
+            <div className="bg-[#f8f9fa] rounded-[20px] p-6 border border-gray-100">
+              <h4 className="text-[18px] font-semibold text-[#0a0b10] mb-6">📈 Daily Consultations (Last 7 Days)</h4>
+              <div className="space-y-4">
                 {reportData.dailyConsultations.map((count, index) => (
                   <div key={index} className="flex items-center justify-between">
-                    <span className="text-gray-700">Day {index + 1}</span>
-                    <div className="flex items-center space-x-3">
-                      <div className="w-24 bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-blue-500 h-2 rounded-full" 
+                    <span className="text-sm font-medium text-[#7a7a7a] w-12">Day {index + 1}</span>
+                    <div className="flex items-center space-x-3 flex-1 mx-4">
+                      <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                        <div
+                          className="bg-[#1B44FE] h-full rounded-full transition-all duration-500"
                           style={{ width: `${(count / Math.max(...reportData.dailyConsultations)) * 100}%` }}
                         ></div>
                       </div>
-                      <span className="text-sm text-gray-600 w-8">{count}</span>
                     </div>
+                    <span className="text-sm font-bold text-[#0a0b10] w-8 text-right">{count}</span>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Patient Satisfaction */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">⭐ Patient Satisfaction Trend</h4>
-              <div className="space-y-3">
+            <div className="bg-[#f8f9fa] rounded-[20px] p-6 border border-gray-100">
+              <h4 className="text-[18px] font-semibold text-[#0a0b10] mb-6">⭐ Patient Satisfaction Trend</h4>
+              <div className="space-y-4">
                 {reportData.patientSatisfaction.map((rating, index) => (
                   <div key={index} className="flex items-center justify-between">
-                    <span className="text-gray-700">Day {index + 1}</span>
-                    <div className="flex items-center space-x-3">
-                      <div className="w-24 bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-green-500 h-2 rounded-full" 
+                    <span className="text-sm font-medium text-[#7a7a7a] w-12">Day {index + 1}</span>
+                    <div className="flex items-center space-x-3 flex-1 mx-4">
+                      <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                        <div
+                          className="bg-green-500 h-full rounded-full transition-all duration-500"
                           style={{ width: `${(rating / 5) * 100}%` }}
                         ></div>
                       </div>
-                      <span className="text-sm text-gray-600 w-8">{rating}</span>
                     </div>
+                    <span className="text-sm font-bold text-[#0a0b10] w-8 text-right">{rating}</span>
                   </div>
                 ))}
               </div>
@@ -1106,36 +1172,36 @@ const DoctorDashboard: React.FC = () => {
           </div>
 
           {/* Consultation Types Distribution */}
-          <div className="mt-8 bg-gray-50 rounded-lg p-6">
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">📋 Consultation Types Distribution</h4>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-3">
+          <div className="mt-8 bg-[#f8f9fa] rounded-[20px] p-6 border border-gray-100">
+            <h4 className="text-[18px] font-semibold text-[#0a0b10] mb-6">📋 Consultation Types Distribution</h4>
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="space-y-4">
                 {Object.entries(reportData.consultationTypes).map(([type, count]) => {
                   const total = Object.values(reportData.consultationTypes).reduce((a, b) => a + b, 0);
                   const percentage = ((count / total) * 100).toFixed(1);
                   return (
                     <div key={type} className="flex items-center justify-between">
-                      <span className="text-gray-700">{type}</span>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-32 bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-purple-500 h-2 rounded-full" 
+                      <span className="text-sm font-medium text-[#7a7a7a] w-32 truncate">{type}</span>
+                      <div className="flex items-center space-x-3 flex-1 mx-4">
+                        <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                          <div
+                            className="bg-purple-500 h-full rounded-full transition-all duration-500"
                             style={{ width: `${percentage}%` }}
                           ></div>
                         </div>
-                        <span className="text-sm text-gray-600 w-16">{count} ({percentage}%)</span>
                       </div>
+                      <span className="text-sm font-bold text-[#0a0b10] w-16 text-right">{count} ({Math.round(Number(percentage))}%)</span>
                     </div>
                   );
                 })}
               </div>
-              
-              <div className="text-center">
-                <div className="bg-white rounded-lg p-4 border">
-                  <p className="text-2xl font-bold text-gray-900">
+
+              <div className="flex items-center justify-center">
+                <div className="bg-white rounded-[20px] p-8 border border-gray-100 text-center shadow-sm w-full max-w-xs">
+                  <p className="text-[48px] font-bold text-[#0a0b10] leading-none mb-2">
                     {Object.values(reportData.consultationTypes).reduce((a, b) => a + b, 0)}
                   </p>
-                  <p className="text-sm text-gray-600">Total Consultations</p>
+                  <p className="text-[#7a7a7a] font-medium">Total Consultations</p>
                 </div>
               </div>
             </div>
@@ -1143,62 +1209,62 @@ const DoctorDashboard: React.FC = () => {
         </div>
 
         {/* Report Generation */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">📋 Generate Custom Reports</h3>
-          <div className="grid md:grid-cols-2 gap-6">
+        <div className="bg-white rounded-[20px] shadow-[0_7px_21px_0_rgba(27,68,254,0.03)] p-8 border border-gray-100">
+          <h3 className="text-[24px] font-semibold text-[#0a0b10] tracking-[-0.8px] mb-6">📋 Generate Custom Reports</h3>
+          <div className="grid md:grid-cols-2 gap-8">
             <div className="space-y-4">
-              <h4 className="font-semibold text-gray-900">Report Types</h4>
-              <div className="space-y-2">
-                <button 
+              <h4 className="font-semibold text-[#0a0b10] mb-2">Report Types</h4>
+              <div className="space-y-3">
+                <button
                   onClick={() => alert('📊 Weekly performance report generated!')}
-                  className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 text-left pl-4"
+                  className="w-full bg-[#f8f9fa] border border-gray-200 text-[#0a0b10] py-3 px-4 rounded-[12px] hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-all text-left font-medium flex items-center gap-3"
                 >
-                  📈 Weekly Performance Report
+                  <span>📈</span> Weekly Performance Report
                 </button>
-                <button 
+                <button
                   onClick={() => alert('👥 Patient demographics report generated!')}
-                  className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 text-left pl-4"
+                  className="w-full bg-[#f8f9fa] border border-gray-200 text-[#0a0b10] py-3 px-4 rounded-[12px] hover:bg-green-50 hover:border-green-200 hover:text-green-700 transition-all text-left font-medium flex items-center gap-3"
                 >
-                  👥 Patient Demographics Report
+                  <span>👥</span> Patient Demographics Report
                 </button>
-                <button 
+                <button
                   onClick={() => alert('⏰ Time management report generated!')}
-                  className="w-full bg-purple-500 text-white py-2 rounded-lg hover:bg-purple-600 text-left pl-4"
+                  className="w-full bg-[#f8f9fa] border border-gray-200 text-[#0a0b10] py-3 px-4 rounded-[12px] hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 transition-all text-left font-medium flex items-center gap-3"
                 >
-                  ⏰ Time Management Report
+                  <span>⏰</span> Time Management Report
                 </button>
-                <button 
+                <button
                   onClick={() => alert('🎯 Treatment outcomes report generated!')}
-                  className="w-full bg-orange-500 text-white py-2 rounded-lg hover:bg-orange-600 text-left pl-4"
+                  className="w-full bg-[#f8f9fa] border border-gray-200 text-[#0a0b10] py-3 px-4 rounded-[12px] hover:bg-orange-50 hover:border-orange-200 hover:text-orange-700 transition-all text-left font-medium flex items-center gap-3"
                 >
-                  🎯 Treatment Outcomes Report
+                  <span>🎯</span> Treatment Outcomes Report
                 </button>
               </div>
             </div>
-            
+
             <div className="space-y-4">
-              <h4 className="font-semibold text-gray-900">Quick Stats</h4>
-              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                <p className="flex justify-between">
-                  <span>Total Patients:</span>
-                  <strong>{patients.length}</strong>
-                </p>
-                <p className="flex justify-between">
-                  <span>Active Patients:</span>
-                  <strong>{patients.filter(p => p.status === 'active').length}</strong>
-                </p>
-                <p className="flex justify-between">
-                  <span>Pending Reviews:</span>
-                  <strong>{pendingScans.filter(s => s.status === 'pending_review').length}</strong>
-                </p>
-                <p className="flex justify-between">
-                  <span>This Week's Consultations:</span>
-                  <strong>{totalConsultations}</strong>
-                </p>
-                <p className="flex justify-between">
-                  <span>Average Rating:</span>
-                  <strong>{avgSatisfaction}/5.0 ⭐</strong>
-                </p>
+              <h4 className="font-semibold text-[#0a0b10] mb-2">Quick Stats</h4>
+              <div className="bg-[#f8f9fa] rounded-[16px] p-6 space-y-4 border border-gray-100">
+                <div className="flex justify-between items-center pb-3 border-b border-gray-200">
+                  <span className="text-[#7a7a7a]">Total Patients</span>
+                  <strong className="text-[#0a0b10] text-lg">{patients.length}</strong>
+                </div>
+                <div className="flex justify-between items-center pb-3 border-b border-gray-200">
+                  <span className="text-[#7a7a7a]">Active Patients</span>
+                  <strong className="text-[#0a0b10] text-lg">{patients.filter(p => p.status === 'active').length}</strong>
+                </div>
+                <div className="flex justify-between items-center pb-3 border-b border-gray-200">
+                  <span className="text-[#7a7a7a]">Pending Reviews</span>
+                  <strong className="text-[#0a0b10] text-lg">{pendingScans.filter(s => s.status === 'pending_review').length}</strong>
+                </div>
+                <div className="flex justify-between items-center pb-3 border-b border-gray-200">
+                  <span className="text-[#7a7a7a]">This Week's Consultations</span>
+                  <strong className="text-[#0a0b10] text-lg">{totalConsultations}</strong>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[#7a7a7a]">Average Rating</span>
+                  <strong className="text-[#0a0b10] text-lg">{avgSatisfaction}/5.0 ⭐</strong>
+                </div>
               </div>
             </div>
           </div>
@@ -1208,330 +1274,140 @@ const DoctorDashboard: React.FC = () => {
   };
 
   const renderSettings = () => (
-    <div className="space-y-6">
-      {/* Professional Information */}
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h3 className="text-xl font-bold text-gray-900 mb-6">👨‍⚕️ Professional Information</h3>
-        <div className="grid md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-            <input
-              type="text"
-              value={doctorSettings.name}
-              onChange={(e) => setDoctorSettings(prev => ({ ...prev, name: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
+    <div className="space-y-8">
+      {/* Profile Settings */}
+      <div className="bg-white rounded-[20px] shadow-[0_7px_21px_0_rgba(27,68,254,0.03)] p-8 border border-gray-100">
+        <h3 className="text-[24px] font-semibold text-[#0a0b10] tracking-[-0.8px] mb-6">Profile Settings</h3>
+        <div className="flex items-start gap-8">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center text-5xl border-4 border-white shadow-lg">
+              👨‍⚕️
+            </div>
+            <button className="text-sm font-medium text-[#1B44FE] hover:text-blue-700 transition-colors">
+              Change Photo
+            </button>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-            <input
-              type="email"
-              value={doctorSettings.email}
-              onChange={(e) => setDoctorSettings(prev => ({ ...prev, email: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-            <input
-              type="tel"
-              value={doctorSettings.phone}
-              onChange={(e) => setDoctorSettings(prev => ({ ...prev, phone: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Specialization</label>
-            <select
-              value={doctorSettings.specialization}
-              onChange={(e) => setDoctorSettings(prev => ({ ...prev, specialization: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="General Practice">General Practice</option>
-              <option value="Cardiology">Cardiology</option>
-              <option value="Neurology">Neurology</option>
-              <option value="Radiology">Radiology</option>
-              <option value="Orthopedics">Orthopedics</option>
-              <option value="Pediatrics">Pediatrics</option>
-              <option value="Surgery">Surgery</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Medical License Number</label>
-            <input
-              type="text"
-              value={doctorSettings.licenseNumber}
-              onChange={(e) => setDoctorSettings(prev => ({ ...prev, licenseNumber: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Years of Experience</label>
-            <input
-              type="number"
-              value={doctorSettings.yearsOfExperience}
-              onChange={(e) => setDoctorSettings(prev => ({ ...prev, yearsOfExperience: parseInt(e.target.value) || 0 }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Hospital Affiliation</label>
-            <input
-              type="text"
-              value={doctorSettings.hospitalAffiliation}
-              onChange={(e) => setDoctorSettings(prev => ({ ...prev, hospitalAffiliation: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Consultation Fee ($)</label>
-            <input
-              type="number"
-              value={doctorSettings.consultationFee}
-              onChange={(e) => setDoctorSettings(prev => ({ ...prev, consultationFee: parseInt(e.target.value) || 0 }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Office Address</label>
-            <textarea
-              value={doctorSettings.officeAddress}
-              onChange={(e) => setDoctorSettings(prev => ({ ...prev, officeAddress: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              rows={2}
-            />
+
+          <div className="flex-1 grid md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-[#0a0b10] mb-2">Full Name</label>
+              <input
+                type="text"
+                defaultValue={user.name}
+                className="w-full px-4 py-3 border border-gray-200 rounded-[12px] focus:ring-2 focus:ring-[#1B44FE] focus:border-transparent outline-none text-sm bg-[#f8f9fa]"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#0a0b10] mb-2">Email Address</label>
+              <input
+                type="email"
+                defaultValue={user.email}
+                className="w-full px-4 py-3 border border-gray-200 rounded-[12px] focus:ring-2 focus:ring-[#1B44FE] focus:border-transparent outline-none text-sm bg-[#f8f9fa]"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#0a0b10] mb-2">Specialization</label>
+              <input
+                type="text"
+                defaultValue="Radiologist"
+                className="w-full px-4 py-3 border border-gray-200 rounded-[12px] focus:ring-2 focus:ring-[#1B44FE] focus:border-transparent outline-none text-sm bg-[#f8f9fa]"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#0a0b10] mb-2">License Number</label>
+              <input
+                type="text"
+                defaultValue="MD-12345-NY"
+                className="w-full px-4 py-3 border border-gray-200 rounded-[12px] focus:ring-2 focus:ring-[#1B44FE] focus:border-transparent outline-none text-sm bg-[#f8f9fa]"
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Availability Schedule */}
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h3 className="text-xl font-bold text-gray-900 mb-6">📅 Weekly Availability</h3>
-        <div className="space-y-4">
-          {Object.entries(doctorSettings.availability).map(([day, schedule]) => (
-            <div key={day} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center space-x-4">
-                <input
-                  type="checkbox"
-                  checked={schedule.available}
-                  onChange={(e) => setDoctorSettings(prev => ({
-                    ...prev,
-                    availability: {
-                      ...prev.availability,
-                      [day]: { ...schedule, available: e.target.checked }
-                    }
-                  }))}
-                  className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
-                />
-                <label className="font-medium text-gray-700 capitalize w-20">{day}</label>
-              </div>
-              {schedule.available && (
-                <div className="flex items-center space-x-4">
-                  <input
-                    type="time"
-                    value={schedule.startTime}
-                    onChange={(e) => setDoctorSettings(prev => ({
-                      ...prev,
-                      availability: {
-                        ...prev.availability,
-                        [day]: { ...schedule, startTime: e.target.value }
-                      }
-                    }))}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                  <span className="text-gray-500">to</span>
-                  <input
-                    type="time"
-                    value={schedule.endTime}
-                    onChange={(e) => setDoctorSettings(prev => ({
-                      ...prev,
-                      availability: {
-                        ...prev.availability,
-                        [day]: { ...schedule, endTime: e.target.value }
-                      }
-                    }))}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              )}
-            </div>
-          ))}
+        <div className="mt-8 flex justify-end">
+          <button
+            onClick={() => alert('Profile updated successfully!')}
+            className="px-6 py-2.5 rounded-[12px] text-sm font-semibold text-white shadow-[0_4px_12px_0_rgba(27,68,254,0.2)] hover:shadow-[0_6px_16px_0_rgba(27,68,254,0.3)] transition-all"
+            style={{ background: 'radial-gradient(50% 50%, rgb(27, 68, 254) 51.654%, rgb(83, 117, 254) 100%)' }}
+          >
+            Save Changes
+          </button>
         </div>
       </div>
 
       {/* Notification Preferences */}
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h3 className="text-xl font-bold text-gray-900 mb-6">🔔 Notification Preferences</h3>
+      <div className="bg-white rounded-[20px] shadow-[0_7px_21px_0_rgba(27,68,254,0.03)] p-8 border border-gray-100">
+        <h3 className="text-[24px] font-semibold text-[#0a0b10] tracking-[-0.8px] mb-6">Notification Preferences</h3>
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between p-4 bg-[#f8f9fa] rounded-[16px] border border-gray-100">
             <div>
-              <label className="font-medium text-gray-700">Email Notifications</label>
-              <p className="text-sm text-gray-500">Receive notifications via email</p>
+              <h4 className="font-semibold text-[#0a0b10] text-[16px]">Email Notifications</h4>
+              <p className="text-sm text-[#7a7a7a]">Receive daily summaries and urgent alerts via email</p>
             </div>
-            <input
-              type="checkbox"
-              checked={doctorSettings.notifications.email}
-              onChange={(e) => setDoctorSettings(prev => ({
-                ...prev,
-                notifications: { ...prev.notifications, email: e.target.checked }
-              }))}
-              className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
-            />
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={doctorSettings.emailNotifications}
+                onChange={() => setDoctorSettings({ ...doctorSettings, emailNotifications: !doctorSettings.emailNotifications })}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#1B44FE]"></div>
+            </label>
           </div>
-          <div className="flex items-center justify-between">
+
+          <div className="flex items-center justify-between p-4 bg-[#f8f9fa] rounded-[16px] border border-gray-100">
             <div>
-              <label className="font-medium text-gray-700">SMS Notifications</label>
-              <p className="text-sm text-gray-500">Receive notifications via SMS</p>
+              <h4 className="font-semibold text-[#0a0b10] text-[16px]">SMS Alerts</h4>
+              <p className="text-sm text-[#7a7a7a]">Get text messages for urgent patient updates</p>
             </div>
-            <input
-              type="checkbox"
-              checked={doctorSettings.notifications.sms}
-              onChange={(e) => setDoctorSettings(prev => ({
-                ...prev,
-                notifications: { ...prev.notifications, sms: e.target.checked }
-              }))}
-              className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="font-medium text-gray-700">New Patients</label>
-              <p className="text-sm text-gray-500">Get notified about new patient registrations</p>
-            </div>
-            <input
-              type="checkbox"
-              checked={doctorSettings.notifications.newPatients}
-              onChange={(e) => setDoctorSettings(prev => ({
-                ...prev,
-                notifications: { ...prev.notifications, newPatients: e.target.checked }
-              }))}
-              className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="font-medium text-gray-700">Urgent Cases</label>
-              <p className="text-sm text-gray-500">Get immediate alerts for urgent medical cases</p>
-            </div>
-            <input
-              type="checkbox"
-              checked={doctorSettings.notifications.urgentCases}
-              onChange={(e) => setDoctorSettings(prev => ({
-                ...prev,
-                notifications: { ...prev.notifications, urgentCases: e.target.checked }
-              }))}
-              className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="font-medium text-gray-700">AI Analysis Alerts</label>
-              <p className="text-sm text-gray-500">Get notified when AI analysis requires review</p>
-            </div>
-            <input
-              type="checkbox"
-              checked={doctorSettings.notifications.aiAlerts}
-              onChange={(e) => setDoctorSettings(prev => ({
-                ...prev,
-                notifications: { ...prev.notifications, aiAlerts: e.target.checked }
-              }))}
-              className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
-            />
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={doctorSettings.smsAlerts}
+                onChange={() => setDoctorSettings({ ...doctorSettings, smsAlerts: !doctorSettings.smsAlerts })}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#1B44FE]"></div>
+            </label>
           </div>
         </div>
       </div>
 
-      {/* Preferences */}
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h3 className="text-xl font-bold text-gray-900 mb-6">⚙️ Practice Preferences</h3>
+      {/* System Preferences */}
+      <div className="bg-white rounded-[20px] shadow-[0_7px_21px_0_rgba(27,68,254,0.03)] p-8 border border-gray-100">
+        <h3 className="text-[24px] font-semibold text-[#0a0b10] tracking-[-0.8px] mb-6">System Preferences</h3>
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between p-4 bg-[#f8f9fa] rounded-[16px] border border-gray-100">
             <div>
-              <label className="font-medium text-gray-700">Auto-approve Normal Scans</label>
-              <p className="text-sm text-gray-500">Automatically approve AI analysis with high confidence and no abnormalities</p>
+              <h4 className="font-semibold text-[#0a0b10] text-[16px]">Dark Mode</h4>
+              <p className="text-sm text-[#7a7a7a]">Switch between light and dark themes</p>
             </div>
-            <input
-              type="checkbox"
-              checked={doctorSettings.preferences.autoApproveNormalScans}
-              onChange={(e) => setDoctorSettings(prev => ({
-                ...prev,
-                preferences: { ...prev.preferences, autoApproveNormalScans: e.target.checked }
-              }))}
-              className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="font-medium text-gray-700">Require Second Opinion</label>
-              <p className="text-sm text-gray-500">Require colleague review for complex cases</p>
-            </div>
-            <input
-              type="checkbox"
-              checked={doctorSettings.preferences.requireSecondOpinion}
-              onChange={(e) => setDoctorSettings(prev => ({
-                ...prev,
-                preferences: { ...prev.preferences, requireSecondOpinion: e.target.checked }
-              }))}
-              className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="font-medium text-gray-700">Share Data for Research</label>
-              <p className="text-sm text-gray-500">Allow anonymous data usage for medical research</p>
-            </div>
-            <input
-              type="checkbox"
-              checked={doctorSettings.preferences.shareDataForResearch}
-              onChange={(e) => setDoctorSettings(prev => ({
-                ...prev,
-                preferences: { ...prev.preferences, shareDataForResearch: e.target.checked }
-              }))}
-              className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </div>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Default Appointment Duration (minutes)</label>
+            <label className="relative inline-flex items-center cursor-pointer">
               <input
-                type="number"
-                value={doctorSettings.preferences.defaultAppointmentDuration}
-                onChange={(e) => setDoctorSettings(prev => ({
-                  ...prev,
-                  preferences: { ...prev.preferences, defaultAppointmentDuration: parseInt(e.target.value) || 30 }
-                }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                type="checkbox"
+                checked={doctorSettings.darkMode}
+                onChange={() => setDoctorSettings({ ...doctorSettings, darkMode: !doctorSettings.darkMode })}
+                className="sr-only peer"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Maximum Patients Per Day</label>
-              <input
-                type="number"
-                value={doctorSettings.preferences.maxPatientsPerDay}
-                onChange={(e) => setDoctorSettings(prev => ({
-                  ...prev,
-                  preferences: { ...prev.preferences, maxPatientsPerDay: parseInt(e.target.value) || 20 }
-                }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#1B44FE]"></div>
+            </label>
           </div>
-        </div>
-      </div>
 
-      {/* Save Settings */}
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Save Changes</h3>
-            <p className="text-gray-600">Make sure to save your changes before leaving this page</p>
+          <div className="flex items-center justify-between p-4 bg-[#f8f9fa] rounded-[16px] border border-gray-100">
+            <div>
+              <h4 className="font-semibold text-[#0a0b10] text-[16px]">Auto-Save Notes</h4>
+              <p className="text-sm text-[#7a7a7a]">Automatically save clinical notes while typing</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={doctorSettings.autoSave}
+                onChange={() => setDoctorSettings({ ...doctorSettings, autoSave: !doctorSettings.autoSave })}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#1B44FE]"></div>
+            </label>
           </div>
-          <button
-            onClick={saveSettings}
-            className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 font-semibold"
-          >
-            💾 Save Settings
-          </button>
         </div>
       </div>
     </div>
@@ -1548,27 +1424,40 @@ const DoctorDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#f0f0f0] font-Inter">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-white shadow-[0_4px_20px_0_rgba(0,0,0,0.02)] sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <Link to="/" className="text-2xl font-bold text-blue-600 mr-8">
-                🏥 Healthcare AI
+            <div className="flex items-center gap-3">
+              <div className="flex w-[32px] h-[32px] items-center justify-center shrink-0 flex-nowrap relative rounded-[8px]" style={{ background: 'radial-gradient(50% 50%, rgb(27, 68, 254) 51.654%, rgb(83, 117, 254) 100%)' }}>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 256 256"
+                  className="h-5 w-5 fill-white"
+                >
+                  <path d="M213.85,125.46l-112,120a8,8,0,0,1-13.69-7l14.66-73.33L45.19,143.49a8,8,0,0,1-3-13l112-120a8,8,0,0,1,13.69,7L153.18,90.9l57.63,21.61a8,8,0,0,1,3,12.95Z" />
+                </svg>
+              </div>
+              <Link to="/" className="text-[20px] font-semibold text-[#0a0b10] tracking-[-0.8px]">
+                Scanlytics
               </Link>
-              <h1 className="text-xl font-semibold text-gray-900">Doctor Portal</h1>
+              <div className="h-6 w-[1px] bg-gray-200 mx-2"></div>
+              <h1 className="text-[16px] font-medium text-[#7a7a7a]">Doctor Portal</h1>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-semibold">
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-3 pl-6 border-l border-gray-100">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold shadow-sm bg-green-500">
                   Dr
                 </div>
-                <span className="text-gray-700">{user.name}</span>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-[#0a0b10] leading-tight">{user.name}</span>
+                  <span className="text-xs text-[#7a7a7a]">Doctor</span>
+                </div>
               </div>
-              <button 
+              <button
                 onClick={handleLogout}
-                className="text-red-600 hover:text-red-800 font-semibold"
+                className="text-[#7a7a7a] hover:text-[#FF4D4D] text-sm font-medium transition-colors"
               >
                 Logout
               </button>
@@ -1579,10 +1468,10 @@ const DoctorDashboard: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Navigation Tabs */}
-        <div className="mb-8">
-          <nav className="flex space-x-8">
+        <div className="mb-8 overflow-x-auto">
+          <nav className="flex space-x-2 p-1 bg-white rounded-[16px] shadow-[0_2px_8px_0_rgba(0,0,0,0.04)] w-fit">
             {[
-              { id: 'overview', label: 'Overview', icon: '��' },
+              { id: 'overview', label: 'Overview', icon: '📊' },
               { id: 'reviews', label: 'AI Reviews', icon: '🤖' },
               { id: 'patients', label: 'Patient Management', icon: '👥' },
               { id: 'reports', label: 'Reports', icon: '📋' },
@@ -1591,11 +1480,11 @@ const DoctorDashboard: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center px-4 py-2 rounded-lg font-semibold transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-green-500 text-white'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
+                className={`flex items-center px-5 py-2.5 rounded-[12px] text-sm font-medium transition-all duration-200 ${activeTab === tab.id
+                  ? 'text-white shadow-md'
+                  : 'text-[#7a7a7a] hover:bg-gray-50 hover:text-[#0a0b10]'
+                  }`}
+                style={activeTab === tab.id ? { background: 'radial-gradient(50% 50%, rgb(27, 68, 254) 51.654%, rgb(83, 117, 254) 100%)' } : {}}
               >
                 <span className="mr-2">{tab.icon}</span>
                 {tab.label}
@@ -1605,7 +1494,7 @@ const DoctorDashboard: React.FC = () => {
         </div>
 
         {/* Content */}
-        <div>
+        <div className="transition-all duration-300 ease-in-out">
           {activeTab === 'overview' && renderOverview()}
           {activeTab === 'reviews' && renderAIReviews()}
           {activeTab === 'patients' && renderPatientManagement()}
