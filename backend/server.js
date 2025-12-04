@@ -1,8 +1,16 @@
 const express = require('express');
 const cors = require('cors');
+const dotenv = require('dotenv');
+const connectDB = require('./config/database');
+
+// Load environment variables
+dotenv.config();
 
 const app = express();
-const PORT = 5001;
+const PORT = process.env.PORT || 5001;
+
+// Connect to MongoDB
+connectDB();
 
 // Middleware
 app.use(cors({
@@ -118,6 +126,36 @@ app.post('/api/patient/appointments', (req, res) => {
   res.json(appointment);
 });
 
+// Import route modules
+const patientRoutes = require('./routes/patient');
+const doctorRoutes = require('./routes/doctor');
+const hospitalRoutes = require('./routes/hospital');
+const analyticsRoutes = require('./routes/analytics');
+const searchRoutes = require('./routes/search');
+const triageRoutes = require('./routes/triage');
+const schedulingRoutes = require('./routes/scheduling');
+const aiRoutes = require('./routes/ai');
+const docsRoutes = require('./routes/docs');
+const firebaseRoutes = require('./routes/firebase');
+
+// Initialize Firebase
+const { initializeFirebase } = require('./config/firebase');
+initializeFirebase();
+
+// API Routes - Core routes
+app.use('/api/patient', patientRoutes);
+app.use('/api/doctor', doctorRoutes);
+app.use('/api/hospital', hospitalRoutes);
+
+// API Routes - New DSA and Analytics endpoints
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/triage', triageRoutes);
+app.use('/api/scheduling', schedulingRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/docs', docsRoutes);
+app.use('/api/firebase', firebaseRoutes);
+
 // Catch all other requests
 app.use('*', (req, res) => {
   console.log('❓ Unmatched route:', req.method, req.originalUrl);
@@ -127,18 +165,40 @@ app.use('*', (req, res) => {
       'GET /api/health',
       'POST /api/auth/login',
       'POST /api/v1/auth/login',
-      'GET /api/patient/profile'
+      'GET /api/patient/profile',
+      'GET /api/analytics/patient-cohorts',
+      'GET /api/analytics/hospital-metrics',
+      'GET /api/search/patients/:id',
+      'POST /api/triage/er/add-patient',
+      'POST /api/scheduling/optimize-or'
     ]
   });
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Healthcare Backend running on port ${PORT}`);
-  console.log(`✅ Health: http://localhost:${PORT}/api/health`);
-  console.log(`🔐 Login: http://localhost:${PORT}/api/auth/login`);
-  console.log(`🔐 Login v1: http://localhost:${PORT}/api/v1/auth/login`);
-  console.log('📋 Demo credentials:');
+  console.log('\n🏥 ========================================');
+  console.log('   Scanlytics Healthcare Platform API v2.0');
+  console.log('========================================\n');
+  console.log(`🚀 Server: http://localhost:${PORT}`);
+  console.log(`📚 API Docs: http://localhost:${PORT}/api/docs`);
+  console.log(`✅ Health: http://localhost:${PORT}/api/health\n`);
+  
+  console.log('🔧 New Features:');
+  console.log('   🔍 Binary Search - Patient/Drug lookup');
+  console.log('   🚨 Priority Queue - ER Triage');
+  console.log('   ⚡ Hash Maps - O(1) lookups');
+  console.log('   📊 Dynamic Programming - OR scheduling');
+  console.log('   🧠 AI Integration - Medical scan analysis');
+  console.log('   📈 MongoDB Aggregation - Analytics\n');
+  
+  console.log('🎯 Quick Test Endpoints:');
+  console.log(`   GET  ${PORT}/api/analytics/hospital-metrics`);
+  console.log(`   GET  ${PORT}/api/search/patients/P001`);
+  console.log(`   GET  ${PORT}/api/triage/er/queue`);
+  console.log(`   GET  ${PORT}/api/scheduling/sample-or-schedule\n`);
+  
+  console.log('🔐 Demo credentials:');
   console.log('   patient@demo.com / demo123');
   console.log('   doctor@demo.com / demo123');
-  console.log('   hospital@demo.com / demo123');
+  console.log('   hospital@demo.com / demo123\n');
 });

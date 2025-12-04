@@ -1,130 +1,106 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import multer from 'multer';
-import sharp from 'sharp';
-import * as tf from '@tensorflow/tfjs-node';
+import dotenv from 'dotenv';
+import * as fs from 'fs';
+import * as path from 'path';
+import { MedicalImageAI } from './services/medicalImageAI';
+
+dotenv.config();
 
 const app = express();
-const upload = multer({ storage: multer.memoryStorage() });
+const PORT = process.env.PORT || 3000;
+const API_KEY = process.env.GOOGLE_AI_API_KEY;
+
+if (!API_KEY) {
+  console.error('ERROR: GOOGLE_AI_API_KEY not found in environment variables');
+  process.exit(1);
+}
+
+const medicalAI = new MedicalImageAI(API_KEY);
 
 app.use(cors());
 app.use(express.json());
 
-class MedicalImageAnalyzer {
-  private isModelLoaded = false;
-  private modelVersion = '2.1.0';
-
-  async initialize() {
-    try {
-      console.log('🤖 Initializing Medical AI Analyzer...');
-      this.isModelLoaded = true;
-      console.log('✅ Medical AI model loaded successfully');
-    } catch (error) {
-      console.error('❌ Failed to load medical AI model:', error);
-    }
-  }
-
-  async analyzeImage(imageBuffer: Buffer, scanType: string, scanId: string) {
-    const startTime = Date.now();
-    
-    // Simulate AI analysis
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    const mockFindings = [
-      { 
-        condition: 'Normal',
-        confidence: 0.92,
-        description: 'No abnormal findings detected',
-        severity: 'low'
-      }
-    ];
-    
-    const mockRecommendations = [
-      {
-        priority: 'low',
-        action: 'Continue routine care',
-        details: 'No immediate action required'
-      }
-    ];
-
-    const processingTime = Date.now() - startTime;
-    const metadata = await sharp(imageBuffer).metadata();
-
-    return {
-      success: true,
-      scanId,
-      confidence: 0.92,
-      findings: mockFindings,
-      recommendations: mockRecommendations,
-      requiresDoctorReview: false,
-      metadata: {
-        processingTime,
-        modelVersion: this.modelVersion,
-        timestamp: new Date().toISOString(),
-        imageInfo: {
-          width: metadata.width || 0,
-          height: metadata.height || 0,
-          format: metadata.format || 'unknown',
-          size: imageBuffer.length
-        }
-      }
-    };
-  }
+const uploadsDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-const analyzer = new MedicalImageAnalyzer();
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${Date.now()}-${file.originalname}`;
+    cb(null, uniqueName);
+  },
+});
 
-app.post('/analyze', upload.single('image'), async (req, res) => {
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPEG, PNG, and WebP are allowed.'));
+    }
+  },
+});
+
+app.get('/', (req: Request, res: Response) => {
+  res.json({
+    message: 'Medical Image AI API',
+    version: '1.0.0',
+    endpoints: {
+      analyze: 'POST /api/analyze',
+      health: 'GET /api/health',
+    },
+  });
+});
+
+app.get('/api/health', (req: Request, res: Response) => {
+  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
+app.post('/api/analyze', upload.single('image'), async (req: Request, res: Response) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ 
-        success: false,
-        error: 'No image file provided' 
-      });
+      return res.status(400).json({ error: 'No image file uploaded' });
     }
 
-    const { scanId, scanType = 'chest-xray' } = req.body;
+    const { imageType, uploadedBy } = req.body;
 
-    if (!scanId) {
+    if (!imageType || !['ct-scan', 'xray'].includes(imageType)) {
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ error: 'Invalid imageType. Must be "ct-scan" or "xray"' });
+    }
+
+    if (!uploadedBy || !['patient', 'hospital-doctor', 'clinic-doctor'].includes(uploadedBy)) {
+      fs.unlinkSync(req.file.path);
       return res.status(400).json({
-        success: false,
-        error: 'Scan ID is required'
+        error: 'Invalid uploadedBy. Must be "patient", "hospital-doctor", or "clinic-doctor"',
       });
     }
 
-    console.log(`🔍 Starting AI analysis for scan ${scanId} (${scanType})`);
+    const result = await medicalAI.analyzeImage(req.file.path, imageType, uploadedBy);
 
-    const result = await analyzer.analyzeImage(req.file.buffer, scanType, scanId);
+    fs.unlinkSync(req.file.path);
 
-    console.log(`✅ AI analysis completed for scan ${scanId} in ${result.metadata.processingTime}ms`);
+    if (!result.success) {
+      return res.status(500).json({ error: result.error });
+    }
 
     res.json(result);
-  } catch (error) {
-    console.error('AI Analysis error:', error);
-    res.status(500).json({ 
-      success: false,
-      error: 'Analysis failed'
-    });
+  } catch (error: any) {
+    console.error('Analysis error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK',
-    service: 'Healthcare AI Service',
-    modelLoaded: analyzer['isModelLoaded'],
-    timestamp: new Date().toISOString()
-  });
-});
-
-const PORT = process.env.PORT || 8000;
-
-analyzer.initialize().then(() => {
-  app.listen(PORT, () => {
-    console.log(`🚀 AI Service running on port ${PORT}`);
-    console.log(`🤖 TensorFlow.js version: ${tf.version.tfjs}`);
-    console.log(`🧠 Medical AI model ready for analysis`);
-  });
-}).catch((error) => {
-  console.error('❌ Failed to initialize AI service:', error);
+app.listen(PORT, () => {
+  console.log(`🚀 Medical Image AI API running on http://localhost:${PORT}`);
+  console.log(`📊 Ready to analyze CT scans and X-rays`);
 });

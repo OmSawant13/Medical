@@ -1,14 +1,14 @@
 const mongoose = require('mongoose');
 
 const medicalScanSchema = new mongoose.Schema({
-  patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  patientId: { type: String },
   patientName: { type: String, required: true },
   scanType: { type: String, required: true },
   fileName: { type: String, required: true },
   fileSize: { type: Number },
   filePath: { type: String },
-  uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  assignedDoctor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  uploadedBy: { type: String, required: true },
+  assignedDoctor: { type: String },
   status: { 
     type: String, 
     enum: ['uploaded', 'processing', 'analysis_complete', 'doctor_reviewed'], 

@@ -1,31 +1,30 @@
 {
-  "name": "healthcare-ai-service",
+  "name": "medical-image-ai-api",
   "version": "1.0.0",
-  "description": "AI Medical Image Analysis Service",
+  "description": "AI-powered medical image analysis API for CT scans and X-rays",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "nodemon src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test": "ts-node src/cli-test.ts"
   },
+  "keywords": ["medical", "ai", "ct-scan", "xray", "image-analysis"],
+  "author": "",
+  "license": "MIT",
   "dependencies": {
-    "@tensorflow/tfjs": "^4.15.0",
-    "@tensorflow/tfjs-node": "^4.22.0",
-    "@types/axios": "^0.9.36",
-    "axios": "^1.12.2",
+    "@google/generative-ai": "^0.21.0",
+    "express": "^4.18.2",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "multer": "^1.4.5-lts.1",
-    "sharp": "^0.32.6"
+    "multer": "^1.4.5-lts.1"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.19",
     "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
     "@types/multer": "^1.4.11",
-    "@types/node": "^24.6.2",
-    "nodemon": "^3.0.1",
-    "ts-node": "^10.9.1",
-    "typescript": "^5.2.2"
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2"
   }
 }

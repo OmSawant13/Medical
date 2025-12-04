@@ -5,7 +5,8 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   role: { type: String, enum: ['patient', 'doctor', 'hospital'], required: true },
   name: { type: String, required: true },
-  roleSpecificId: { type: String, unique: true },
+  roleSpecificId: { type: String, unique: true, sparse: true },
+  age: { type: Number },
   
   // Common fields
   phone: { type: String },
