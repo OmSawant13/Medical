@@ -1,10 +1,37 @@
+# Ignore all sibling projects in this Desktop mono-folder
+Clothings/
+fake-news-detector/
+reactass/
+spotify/
+tried backend/
+3edsem/
+3rdSem/
+Assignmnet1/
+BundlwiseUI/
+BundlwiseUI2/
+Cafe/
+Desi Backend/
+Desi/
+Kinjal/
+New Desi/
+Nodejs + express js /
+Op/
+Open Source/
+Opensource2/
+Portfolio/
+Re/
+React js/
+We TRY/
+bundlwise-engine/
+cheating/
+database-backend/
+final semProject/
+hos/
+mark/
+medical/
+
 # Dependencies
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-package-lock.json
-# Keep package-lock.json for consistency, but can ignore if needed
 
 # Environment variables
 .env
@@ -14,18 +41,11 @@ package-lock.json
 .env.production.local
 .env*.local
 
-# Logs
+# Logs / runtime
 logs/
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
 *.pid
-
-# Runtime data
 pids/
-*.pid
 *.seed
 *.pid.lock
 
@@ -36,19 +56,19 @@ build/
 out/
 *.tsbuildinfo
 
-# IDE and Editor files
+# IDE / editor
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-.DS_Store
 *.sublime-project
 *.sublime-workspace
 
 # OS files
 .DS_Store
 .DS_Store?
+.localized
 ._*
 .Spotlight-V100
 .Trashes
@@ -60,7 +80,7 @@ coverage/
 .nyc_output/
 *.lcov
 
-# Temporary files
+# Temp
 tmp/
 temp/
 *.tmp
@@ -76,11 +96,8 @@ public/uploads/
 .eslintcache
 .stylelintcache
 
-# Optional npm cache directory
+# Optional npm cache
 .npm
-
-# Optional eslint cache
-.eslintcache
 
 # Optional REPL history
 .node_repl_history
@@ -91,10 +108,7 @@ public/uploads/
 # Yarn Integrity file
 .yarn-integrity
 
-# TypeScript
-*.tsbuildinfo
-
-# MongoDB
+# MongoDB / sqlite
 *.db
 *.sqlite
 *.sqlite3
@@ -104,9 +118,8 @@ public/uploads/
 firebase-debug.log
 firestore-debug.log
 
-# Misc
+# Secrets / certs
 *.pem
 *.key
 *.cert
 *.crt
-
