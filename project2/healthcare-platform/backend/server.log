@@ -1,0 +1,443 @@
+[dotenv@17.2.3] injecting env (9) from .env -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+🔐 Production Auth routes loaded
+⚠️  MONGODB_URI points to Atlas, using local MongoDB instead
+🔗 Connecting to MongoDB...
+📍 Using: Local MongoDB (mongodb://localhost:27017)
+🟢 Mongoose connected to MongoDB
+✅ MongoDB Connected: localhost
+📊 Database: healthcare-platform
+🔗 Connection Status: Connected
+✅ MongoDB: Connected successfully
+🚀 Healthcare Backend running on port 5001
+✅ Health: http://localhost:5001/api/health
+🔐 Auth Routes:
+   POST http://localhost:5001/api/v1/auth/login
+   POST http://localhost:5001/api/v1/auth/register
+   POST http://localhost:5001/api/v1/auth/refresh
+
+📝 Note: Some features require MongoDB connection
+GET /api/health {}
+POST /api/v1/auth/login {
+  email: 'omsawant@example.com',
+  password: 'omsawant123',
+  role: 'patient'
+}
+🔐 ========== LOGIN REQUEST ==========
+📧 Request body: {
+  email: 'omsawant@example.com',
+  hasPassword: true,
+  passwordLength: 11,
+  role: 'patient'
+}
+✅ Validation result: { valid: true, errors: [], sanitizedEmail: 'omsawant@example.com' }
+🔑 Using password from req.body, length: 11
+🔐 Verifying password...
+🔐 Password verification result: true
+✅ Password verified successfully
+✅ Role check passed
+🔑 Generating token pair...
+🔑 Token payload: {
+  userId: '694e1f900f1755c17615f3d0',
+  email: 'omsawant@example.com',
+  role: 'patient',
+  roleSpecificId: 'PMJMFZ8K62CE0'
+}
+🔑 Token pair generated: {
+  hasAccessToken: true,
+  hasRefreshToken: true,
+  accessTokenLength: 388,
+  refreshTokenLength: 345
+}
+✅ Refresh token stored in user profile
+✅ Last login updated
+✅ ========== LOGIN SUCCESSFUL ==========
+👤 User: omsawant@example.com Role: patient
+🔑 Sending response with tokens: { hasAccessToken: true, hasRefreshToken: true }
+📤 Response data structure: {
+  success: true,
+  hasData: true,
+  hasAccessToken: true,
+  hasRefreshToken: true,
+  hasUser: true,
+  accessTokenType: 'string',
+  accessTokenLength: 388,
+  refreshTokenType: 'string',
+  refreshTokenLength: 345
+}
+🔑 Access token preview: eyJhbGciOiJIUzI1NiIs...
+🔑 Refresh token preview: eyJhbGciOiJIUzI1NiIs...
+GET /api/v1/patients/profile {}
+🔑 Auth header: Present
+🔑 Request headers keys: [ 'authorization' ]
+🔑 Auth header value (first 20 chars): Bearer eyJhbGciOiJIU...
+✅ Token found, verifying...
+GET /api/v1/appointments {}
+🔑 Auth header: Present
+🔑 Request headers keys: [ 'authorization' ]
+🔑 Auth header value (first 20 chars): Bearer eyJhbGciOiJIU...
+✅ Token found, verifying...
+✅ User attached to request: {
+  userId: '694e1f900f1755c17615f3d0',
+  email: 'omsawant@example.com',
+  role: 'patient',
+  hasRole: true,
+  userType: 'object',
+  isMongooseDoc: true
+}
+GET /api/v1/patients/scans {}
+🔑 Auth header: Present
+🔑 Request headers keys: [ 'authorization' ]
+🔑 Auth header value (first 20 chars): Bearer eyJhbGciOiJIU...
+✅ Token found, verifying...
+✅ User attached to request: {
+  userId: '694e1f900f1755c17615f3d0',
+  email: 'omsawant@example.com',
+  role: 'patient',
+  hasRole: true,
+  userType: 'object',
+  isMongooseDoc: true
+}
+GET /api/v1/patients/notifications {}
+🔑 Auth header: Present
+🔑 Request headers keys: [ 'authorization' ]
+🔑 Auth header value (first 20 chars): Bearer eyJhbGciOiJIU...
+✅ Token found, verifying...
+✅ Patient ID fetched: PMJMFZ8K62CE0
+✅ User authenticated: omsawant@example.com Role: patient RoleSpecificId: PMJMFZ8K62CE0
+✅ Calling next() - req.user exists: true req.user.role: patient
+HIPAA Warning: Request missing audit log header
+HIPAA Audit: User omsawant@example.com accessed / at 2025-12-26T15:43:28.170Z
+🔐 authorizeRoles middleware called for: GET /
+🔐 authorizeRoles check: {
+  hasUser: true,
+  userRole: 'patient',
+  userRoleAlt: 'patient',
+  allowedRoles: [ 'patient', 'doctor', 'hospital' ],
+  reqKeys: [ 'user', 'userRole', 'tokenPayload' ]
+}
+✅ authorizeRoles: User role: patient Allowed: [ 'patient', 'doctor', 'hospital' ]
+✅ authorizeRoles: Access granted
+✅ Patient ID fetched: PMJMFZ8K62CE0
+✅ User authenticated: omsawant@example.com Role: patient RoleSpecificId: PMJMFZ8K62CE0
+✅ Calling next() - req.user exists: true req.user.role: patient
+HIPAA Warning: Request missing audit log header
+HIPAA Audit: User omsawant@example.com accessed /profile at 2025-12-26T15:43:28.171Z
+🔐 authorizeRoles middleware called for: GET /profile
+🔐 authorizeRoles check: {
+  hasUser: true,
+  userRole: 'patient',
+  userRoleAlt: 'patient',
+  allowedRoles: [ 'patient', 'doctor', 'hospital' ],
+  reqKeys: [ 'user', 'userRole', 'tokenPayload' ]
+}
+✅ authorizeRoles: User role: patient Allowed: [ 'patient', 'doctor', 'hospital' ]
+✅ authorizeRoles: Access granted
+✅ User attached to request: {
+  userId: '694e1f900f1755c17615f3d0',
+  email: 'omsawant@example.com',
+  role: 'patient',
+  hasRole: true,
+  userType: 'object',
+  isMongooseDoc: true
+}
+✅ User attached to request: {
+  userId: '694e1f900f1755c17615f3d0',
+  email: 'omsawant@example.com',
+  role: 'patient',
+  hasRole: true,
+  userType: 'object',
+  isMongooseDoc: true
+}
+✅ Patient ID fetched: PMJMFZ8K62CE0
+✅ User authenticated: omsawant@example.com Role: patient RoleSpecificId: PMJMFZ8K62CE0
+✅ Calling next() - req.user exists: true req.user.role: patient
+HIPAA Warning: Request missing audit log header
+HIPAA Audit: User omsawant@example.com accessed /scans at 2025-12-26T15:43:28.180Z
+🔐 authorizeRoles middleware called for: GET /scans
+🔐 authorizeRoles check: {
+  hasUser: true,
+  userRole: 'patient',
+  userRoleAlt: 'patient',
+  allowedRoles: [ 'patient', 'doctor' ],
+  reqKeys: [ 'user', 'userRole', 'tokenPayload' ]
+}
+✅ authorizeRoles: User role: patient Allowed: [ 'patient', 'doctor' ]
+✅ authorizeRoles: Access granted
+✅ Patient ID fetched: PMJMFZ8K62CE0
+✅ User authenticated: omsawant@example.com Role: patient RoleSpecificId: PMJMFZ8K62CE0
+✅ Calling next() - req.user exists: true req.user.role: patient
+HIPAA Warning: Request missing audit log header
+HIPAA Audit: User omsawant@example.com accessed /notifications at 2025-12-26T15:43:28.181Z
+❓ Unmatched route: GET /api/v1/patients/notifications
+GET /api/v1/patients/notifications {}
+🔑 Auth header: Present
+🔑 Request headers keys: [ 'authorization' ]
+🔑 Auth header value (first 20 chars): Bearer eyJhbGciOiJIU...
+✅ Token found, verifying...
+GET /api/v1/patients/scans {}
+🔑 Auth header: Present
+🔑 Request headers keys: [ 'authorization' ]
+🔑 Auth header value (first 20 chars): Bearer eyJhbGciOiJIU...
+✅ Token found, verifying...
+✅ User attached to request: {
+  userId: '694e1f900f1755c17615f3d0',
+  email: 'omsawant@example.com',
+  role: 'patient',
+  hasRole: true,
+  userType: 'object',
+  isMongooseDoc: true
+}
+GET /api/v1/patients/profile {}
+🔑 Auth header: Present
+🔑 Request headers keys: [ 'authorization' ]
+🔑 Auth header value (first 20 chars): Bearer eyJhbGciOiJIU...
+✅ Token found, verifying...
+✅ User attached to request: {
+  userId: '694e1f900f1755c17615f3d0',
+  email: 'omsawant@example.com',
+  role: 'patient',
+  hasRole: true,
+  userType: 'object',
+  isMongooseDoc: true
+}
+✅ Patient ID fetched: PMJMFZ8K62CE0
+✅ User authenticated: omsawant@example.com Role: patient RoleSpecificId: PMJMFZ8K62CE0
+✅ Calling next() - req.user exists: true req.user.role: patient
+HIPAA Warning: Request missing audit log header
+HIPAA Audit: User omsawant@example.com accessed /notifications at 2025-12-26T15:43:28.191Z
+❓ Unmatched route: GET /api/v1/patients/notifications
+✅ User attached to request: {
+  userId: '694e1f900f1755c17615f3d0',
+  email: 'omsawant@example.com',
+  role: 'patient',
+  hasRole: true,
+  userType: 'object',
+  isMongooseDoc: true
+}
+✅ Patient ID fetched: PMJMFZ8K62CE0
+✅ User authenticated: omsawant@example.com Role: patient RoleSpecificId: PMJMFZ8K62CE0
+✅ Calling next() - req.user exists: true req.user.role: patient
+HIPAA Warning: Request missing audit log header
+HIPAA Audit: User omsawant@example.com accessed /scans at 2025-12-26T15:43:28.192Z
+🔐 authorizeRoles middleware called for: GET /scans
+🔐 authorizeRoles check: {
+  hasUser: true,
+  userRole: 'patient',
+  userRoleAlt: 'patient',
+  allowedRoles: [ 'patient', 'doctor' ],
+  reqKeys: [ 'user', 'userRole', 'tokenPayload' ]
+}
+✅ authorizeRoles: User role: patient Allowed: [ 'patient', 'doctor' ]
+✅ authorizeRoles: Access granted
+✅ Patient ID fetched: PMJMFZ8K62CE0
+✅ User authenticated: omsawant@example.com Role: patient RoleSpecificId: PMJMFZ8K62CE0
+✅ Calling next() - req.user exists: true req.user.role: patient
+HIPAA Warning: Request missing audit log header
+HIPAA Audit: User omsawant@example.com accessed /profile at 2025-12-26T15:43:28.193Z
+🔐 authorizeRoles middleware called for: GET /profile
+🔐 authorizeRoles check: {
+  hasUser: true,
+  userRole: 'patient',
+  userRoleAlt: 'patient',
+  allowedRoles: [ 'patient', 'doctor', 'hospital' ],
+  reqKeys: [ 'user', 'userRole', 'tokenPayload' ]
+}
+✅ authorizeRoles: User role: patient Allowed: [ 'patient', 'doctor', 'hospital' ]
+✅ authorizeRoles: Access granted
+GET /api/v1/appointments {}
+🔑 Auth header: Present
+🔑 Request headers keys: [ 'authorization' ]
+🔑 Auth header value (first 20 chars): Bearer eyJhbGciOiJIU...
+✅ Token found, verifying...
+✅ User attached to request: {
+  userId: '694e1f900f1755c17615f3d0',
+  email: 'omsawant@example.com',
+  role: 'patient',
+  hasRole: true,
+  userType: 'object',
+  isMongooseDoc: true
+}
+✅ Patient ID fetched: PMJMFZ8K62CE0
+✅ User authenticated: omsawant@example.com Role: patient RoleSpecificId: PMJMFZ8K62CE0
+✅ Calling next() - req.user exists: true req.user.role: patient
+HIPAA Warning: Request missing audit log header
+HIPAA Audit: User omsawant@example.com accessed / at 2025-12-26T15:43:28.219Z
+🔐 authorizeRoles middleware called for: GET /
+🔐 authorizeRoles check: {
+  hasUser: true,
+  userRole: 'patient',
+  userRoleAlt: 'patient',
+  allowedRoles: [ 'patient', 'doctor', 'hospital' ],
+  reqKeys: [ 'user', 'userRole', 'tokenPayload' ]
+}
+✅ authorizeRoles: User role: patient Allowed: [ 'patient', 'doctor', 'hospital' ]
+✅ authorizeRoles: Access granted
+GET /api/v1/hospitals {}
+🔑 Auth header: Present
+🔑 Request headers keys: [ 'authorization' ]
+🔑 Auth header value (first 20 chars): Bearer eyJhbGciOiJIU...
+✅ Token found, verifying...
+✅ User attached to request: {
+  userId: '694e1f900f1755c17615f3d0',
+  email: 'omsawant@example.com',
+  role: 'patient',
+  hasRole: true,
+  userType: 'object',
+  isMongooseDoc: true
+}
+✅ Patient ID fetched: PMJMFZ8K62CE0
+✅ User authenticated: omsawant@example.com Role: patient RoleSpecificId: PMJMFZ8K62CE0
+✅ Calling next() - req.user exists: true req.user.role: patient
+🔐 authorizeRoles middleware called for: GET /
+🔐 authorizeRoles check: {
+  hasUser: true,
+  userRole: 'patient',
+  userRoleAlt: 'patient',
+  allowedRoles: [ 'patient', 'doctor', 'hospital' ],
+  reqKeys: [ 'user', 'userRole', 'tokenPayload' ]
+}
+✅ authorizeRoles: User role: patient Allowed: [ 'patient', 'doctor', 'hospital' ]
+✅ authorizeRoles: Access granted
+🔍 Searching hospitals near: 19.24095343348888, 73.13118742431392 (5km) using Google Places API
+❌ Error searching location: Request failed with status code 403
+Google API Error Response: {
+  error_message: 'You’re calling a legacy API, which is not enabled for your project. To get newer features and more functionality, switch to the Places API (New) or Routes API. Learn more: https://developers.google.com/maps/legacy#LegacyApiNotActivatedMapError',
+  html_attributions: [],
+  results: [],
+  status: 'REQUEST_DENIED'
+}
+GET /api/v1/hospitals {}
+🔑 Auth header: Present
+🔑 Request headers keys: [ 'authorization' ]
+🔑 Auth header value (first 20 chars): Bearer eyJhbGciOiJIU...
+✅ Token found, verifying...
+✅ User attached to request: {
+  userId: '694e1f900f1755c17615f3d0',
+  email: 'omsawant@example.com',
+  role: 'patient',
+  hasRole: true,
+  userType: 'object',
+  isMongooseDoc: true
+}
+✅ Patient ID fetched: PMJMFZ8K62CE0
+✅ User authenticated: omsawant@example.com Role: patient RoleSpecificId: PMJMFZ8K62CE0
+✅ Calling next() - req.user exists: true req.user.role: patient
+🔐 authorizeRoles middleware called for: GET /
+🔐 authorizeRoles check: {
+  hasUser: true,
+  userRole: 'patient',
+  userRoleAlt: 'patient',
+  allowedRoles: [ 'patient', 'doctor', 'hospital' ],
+  reqKeys: [ 'user', 'userRole', 'tokenPayload' ]
+}
+✅ authorizeRoles: User role: patient Allowed: [ 'patient', 'doctor', 'hospital' ]
+✅ authorizeRoles: Access granted
+🔍 Searching hospitals near: 19.240959080719218, 73.13128344218092 (5km) using Google Places API
+❌ Error searching location: Request failed with status code 403
+Google API Error Response: {
+  error_message: 'You’re calling a legacy API, which is not enabled for your project. To get newer features and more functionality, switch to the Places API (New) or Routes API. Learn more: https://developers.google.com/maps/legacy#LegacyApiNotActivatedMapError',
+  html_attributions: [],
+  results: [],
+  status: 'REQUEST_DENIED'
+}
+GET /api/v1/hospitals {}
+🔑 Auth header: Present
+🔑 Request headers keys: [ 'authorization' ]
+🔑 Auth header value (first 20 chars): Bearer eyJhbGciOiJIU...
+✅ Token found, verifying...
+✅ User attached to request: {
+  userId: '694e1f900f1755c17615f3d0',
+  email: 'omsawant@example.com',
+  role: 'patient',
+  hasRole: true,
+  userType: 'object',
+  isMongooseDoc: true
+}
+✅ Patient ID fetched: PMJMFZ8K62CE0
+✅ User authenticated: omsawant@example.com Role: patient RoleSpecificId: PMJMFZ8K62CE0
+✅ Calling next() - req.user exists: true req.user.role: patient
+🔐 authorizeRoles middleware called for: GET /
+🔐 authorizeRoles check: {
+  hasUser: true,
+  userRole: 'patient',
+  userRoleAlt: 'patient',
+  allowedRoles: [ 'patient', 'doctor', 'hospital' ],
+  reqKeys: [ 'user', 'userRole', 'tokenPayload' ]
+}
+✅ authorizeRoles: User role: patient Allowed: [ 'patient', 'doctor', 'hospital' ]
+✅ authorizeRoles: Access granted
+🔍 Searching hospitals in: Kalyan using Google Places API
+❌ Error searching city Kalyan: Request failed with status code 403
+Google API Error Response: {
+  error_message: 'You’re calling a legacy API, which is not enabled for your project. To get newer features and more functionality, switch to the Places API (New) or Routes API. Learn more: https://developers.google.com/maps/legacy#LegacyApiNotActivatedMapError',
+  html_attributions: [],
+  results: [],
+  status: 'REQUEST_DENIED'
+}
+GET /api/v1/hospitals {}
+🔑 Auth header: Present
+🔑 Request headers keys: [ 'authorization' ]
+🔑 Auth header value (first 20 chars): Bearer eyJhbGciOiJIU...
+✅ Token found, verifying...
+✅ User attached to request: {
+  userId: '694e1f900f1755c17615f3d0',
+  email: 'omsawant@example.com',
+  role: 'patient',
+  hasRole: true,
+  userType: 'object',
+  isMongooseDoc: true
+}
+✅ Patient ID fetched: PMJMFZ8K62CE0
+✅ User authenticated: omsawant@example.com Role: patient RoleSpecificId: PMJMFZ8K62CE0
+✅ Calling next() - req.user exists: true req.user.role: patient
+🔐 authorizeRoles middleware called for: GET /
+🔐 authorizeRoles check: {
+  hasUser: true,
+  userRole: 'patient',
+  userRoleAlt: 'patient',
+  allowedRoles: [ 'patient', 'doctor', 'hospital' ],
+  reqKeys: [ 'user', 'userRole', 'tokenPayload' ]
+}
+✅ authorizeRoles: User role: patient Allowed: [ 'patient', 'doctor', 'hospital' ]
+✅ authorizeRoles: Access granted
+🔍 Searching hospitals in: Kalyan using Google Places API
+❌ Error searching city Kalyan: Request failed with status code 403
+Google API Error Response: {
+  error_message: 'You’re calling a legacy API, which is not enabled for your project. To get newer features and more functionality, switch to the Places API (New) or Routes API. Learn more: https://developers.google.com/maps/legacy#LegacyApiNotActivatedMapError',
+  html_attributions: [],
+  results: [],
+  status: 'REQUEST_DENIED'
+}
+🟡 Mongoose disconnected from MongoDB
+🟢 Mongoose connected to MongoDB
+🟡 Mongoose disconnected from MongoDB
+🟢 Mongoose connected to MongoDB
+🟡 Mongoose disconnected from MongoDB
+🟢 Mongoose connected to MongoDB
+🟡 Mongoose disconnected from MongoDB
+🟢 Mongoose connected to MongoDB
+🟡 Mongoose disconnected from MongoDB
+🟢 Mongoose connected to MongoDB
+🟡 Mongoose disconnected from MongoDB
+🟢 Mongoose connected to MongoDB
+🟡 Mongoose disconnected from MongoDB
+🟢 Mongoose connected to MongoDB
+🟡 Mongoose disconnected from MongoDB
+🟢 Mongoose connected to MongoDB
+🟡 Mongoose disconnected from MongoDB
+🟢 Mongoose connected to MongoDB
+🟡 Mongoose disconnected from MongoDB
+🟢 Mongoose connected to MongoDB
+🟡 Mongoose disconnected from MongoDB
+🟢 Mongoose connected to MongoDB
+🟡 Mongoose disconnected from MongoDB
+🟢 Mongoose connected to MongoDB
+🟡 Mongoose disconnected from MongoDB
+🟢 Mongoose connected to MongoDB
+🟡 Mongoose disconnected from MongoDB
+🟢 Mongoose connected to MongoDB
+🟡 Mongoose disconnected from MongoDB
+🟢 Mongoose connected to MongoDB
+🟡 Mongoose disconnected from MongoDB
+🟢 Mongoose connected to MongoDB
