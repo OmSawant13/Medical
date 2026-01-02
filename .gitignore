@@ -29,6 +29,14 @@ final semProject/
 hos/
 mark/
 medical/
+Projectstolearn/
+WEB/
+.mvn/
+.gitattributes
+*.zip
+Screenshot*.png
+Screenshot*.jpg
+Screenshot*.jpeg
 
 # Dependencies
 node_modules/
