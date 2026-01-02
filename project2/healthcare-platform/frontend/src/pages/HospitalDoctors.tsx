@@ -29,13 +29,7 @@ const HospitalDoctors: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpecialization, setSelectedSpecialization] = useState<string>('all');
 
-  useEffect(() => {
-    if (hospitalId) {
-      loadDoctors();
-    }
-  }, [hospitalId]);
-
-  const loadDoctors = async () => {
+  const loadDoctors = React.useCallback(async () => {
     try {
       setLoading(true);
       const response = await patientAPI.getDoctorsByHospital(hospitalId!);
@@ -47,7 +41,13 @@ const HospitalDoctors: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [hospitalId]);
+
+  useEffect(() => {
+    if (hospitalId) {
+      loadDoctors();
+    }
+  }, [hospitalId, loadDoctors]);
 
   const handleDoctorClick = (doctor: Doctor) => {
     navigate(`/doctors/${doctor.doctorId}`);

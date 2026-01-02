@@ -28,8 +28,7 @@ const DoctorDetail: React.FC = () => {
   const { doctorId } = useParams<{ doctorId: string }>();
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [loading, setLoading] = useState(true);
-  const [bookingStep, setBookingStep] = useState<'info' | 'booking'>('info');
-  
+
   // Booking form state
   const [bookingForm, setBookingForm] = useState({
     date: '',
@@ -41,13 +40,7 @@ const DoctorDetail: React.FC = () => {
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (doctorId) {
-      loadDoctorDetails();
-    }
-  }, [doctorId]);
-
-  const loadDoctorDetails = async () => {
+  const loadDoctorDetails = React.useCallback(async () => {
     try {
       setLoading(true);
       const response = await patientAPI.getDoctorDetails(doctorId!);
@@ -63,47 +56,53 @@ const DoctorDetail: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [doctorId]);
+
+  useEffect(() => {
+    if (doctorId) {
+      loadDoctorDetails();
+    }
+  }, [doctorId, loadDoctorDetails]);
 
   const generateAvailableSlots = (doc: Doctor) => {
     // Generate time slots based on availability
     const slots: string[] = [];
     const today = new Date();
-    
+
     // Generate slots for next 7 days
     const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    
+
     for (let day = 0; day < 7; day++) {
       const date = new Date(today);
       date.setDate(date.getDate() + day);
       const dayIndex = date.getDay();
       const dayName = dayNames[dayIndex];
-      
+
       // Handle both old format (monday, tuesday) and new format
       const dayKey = dayName as keyof typeof doc.availability;
       const dayAvailability = doc.availability?.[dayKey] as any;
-      
+
       // Check if available (handle both object and boolean)
-      const isAvailable = dayAvailability && 
+      const isAvailable = dayAvailability &&
         (typeof dayAvailability === 'object' && dayAvailability !== null
           ? dayAvailability.available !== false
           : dayAvailability === true);
-      
+
       if (isAvailable) {
         let start = '09:00';
         let end = '17:00';
-        
+
         if (typeof dayAvailability === 'object' && dayAvailability !== null) {
           start = dayAvailability.startTime || '09:00';
           end = dayAvailability.endTime || '17:00';
         }
-        
+
         // Generate 30-minute slots
         const [startHour, startMin] = start.split(':').map(Number);
         const [endHour, endMin] = end.split(':').map(Number);
         const startMinutes = startHour * 60 + startMin;
         const endMinutes = endHour * 60 + endMin;
-        
+
         for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
           const hour = Math.floor(minutes / 60);
           const min = minutes % 60;
@@ -113,7 +112,7 @@ const DoctorDetail: React.FC = () => {
         }
       }
     }
-    
+
     setAvailableSlots(slots);
   };
 
@@ -150,7 +149,7 @@ const DoctorDetail: React.FC = () => {
     if (!doctor?.availability) return null;
     const dayKey = day.toLowerCase() as keyof typeof doctor.availability;
     const availability = doctor.availability[dayKey] as any;
-    
+
     // Handle both object format and simple boolean
     if (typeof availability === 'object' && availability !== null) {
       return availability;
@@ -259,11 +258,10 @@ const DoctorDetail: React.FC = () => {
                   return (
                     <div
                       key={day}
-                      className={`p-3 rounded-lg border-2 ${
-                        availability?.available
+                      className={`p-3 rounded-lg border-2 ${availability?.available
                           ? 'border-green-200 bg-green-50'
                           : 'border-gray-200 bg-gray-50'
-                      }`}
+                        }`}
                     >
                       <p className="font-semibold text-sm text-gray-700">{day.slice(0, 3)}</p>
                       {availability?.available ? (
@@ -292,7 +290,7 @@ const DoctorDetail: React.FC = () => {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-sm p-6 sticky top-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">📅 Book Appointment</h2>
-              
+
               <form onSubmit={handleBookingSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -381,11 +379,10 @@ const DoctorDetail: React.FC = () => {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className={`w-full py-3 px-4 rounded-lg font-semibold text-white transition-all ${
-                    submitting
+                  className={`w-full py-3 px-4 rounded-lg font-semibold text-white transition-all ${submitting
                       ? 'bg-gray-400 cursor-not-allowed'
                       : 'bg-blue-600 hover:bg-blue-700 transform hover:scale-105'
-                  }`}
+                    }`}
                 >
                   {submitting ? 'Booking...' : `Book Appointment - ₹${doctor.consultationFee || 500}`}
                 </button>

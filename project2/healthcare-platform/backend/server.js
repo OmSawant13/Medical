@@ -35,9 +35,15 @@ app.use(express.urlencoded({ extended: true }));
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
 
-// Add logging middleware
+// Add logging middleware - log ALL requests to debug routing
 app.use((req, res, next) => {
-    console.log(`${req.method} ${req.path}`, req.body || '');
+    console.log(`📡 ${req.method} ${req.originalUrl} ${req.path}`);
+    if (req.originalUrl.includes('/cancel')) {
+        console.log(`   ⚠️  CANCEL REQUEST DETECTED: ${req.method} ${req.originalUrl}`);
+    }
+    if (req.originalUrl.includes('/notifications')) {
+        console.log(`   🔔 NOTIFICATIONS REQUEST: ${req.method} ${req.originalUrl} - Path: ${req.path}`);
+    }
     next();
 });
 
@@ -106,6 +112,11 @@ if (prescriptionRoutes) {
 
 // Catch all other requests
 app.use('*', (req, res) => {
+    if (req.originalUrl.includes('/notifications')) {
+        console.log(`❌ NOTIFICATIONS ROUTE NOT FOUND: ${req.method} ${req.originalUrl}`);
+        console.log(`   This means the route is not being matched by Express`);
+        console.log(`   Check if patients router is properly registered`);
+    }
     console.log('❓ Unmatched route:', req.method, req.originalUrl);
     res.status(404).json({
         message: `Route ${req.originalUrl} not found`,
@@ -116,6 +127,7 @@ app.use('*', (req, res) => {
             'GET /api/patient/profile',
             'POST /api/v1/auth/register',
             'GET /api/v1/patients/profile',
+            'GET /api/v1/patients/notifications',
             'GET /api/v1/appointments'
         ]
     });

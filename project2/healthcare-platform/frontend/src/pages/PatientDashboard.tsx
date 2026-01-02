@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import QRCode from 'react-qr-code';
 import { patientAPI, authAPI } from '../services/api';
+import { generateMedicalReportPDF, generateMedicalReportPDFBlobUrl } from '../utils/pdfGenerator';
 // Map removed - using list view only
 
 interface MedicalScan {
@@ -18,14 +19,42 @@ interface MedicalScan {
 
 interface Appointment {
   _id: string;
+  appointmentId?: string;
   doctorName: string;
+  doctorId?: string;
   date: string;
   time: string;
   type: string;
-  status: 'scheduled' | 'confirmed' | 'completed';
+  status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'in-progress';
   qrCode?: string;
   meetingLink?: string;
   symptoms?: string;
+}
+
+interface Prescription {
+  _id: string;
+  prescriptionId: string;
+  appointmentId: string;
+  doctorName?: string;
+  diagnosis?: string;
+  notes?: string;
+  imagePrescription?: {
+    filePath: string;
+    fileName: string;
+  };
+  digitalPrescription?: {
+    medicines: Array<{
+      name: string;
+      dosage: string;
+      frequency: string;
+      duration: string;
+      instructions?: string;
+    }>;
+    diagnosis: string;
+    notes: string;
+    followUpDate?: string | Date;
+  };
+  createdAt: string;
 }
 
 interface UserSettings {
@@ -53,12 +82,7 @@ interface UserSettings {
   };
 }
 
-// Format distance in meters (EXACT from hos/app.js)
-const formatMeters = (m: number): string => {
-  if (!Number.isFinite(m)) return "";
-  if (m < 1000) return `${Math.round(m)} m`;
-  return `${(m / 1000).toFixed(2)} km`;
-};
+
 
 const PatientDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -66,13 +90,16 @@ const PatientDashboard: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [scans, setScans] = useState<MedicalScan[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [showQRModal, setShowQRModal] = useState<Appointment | null>(null);
+  const [appointmentFilter, setAppointmentFilter] = useState<'all' | 'upcoming' | 'completed'>('all');
   const [showNewAppointmentQR, setShowNewAppointmentQR] = useState<Appointment | null>(null);
+  const [viewingAppointment, setViewingAppointment] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   // MVP Booking Flow States
   const [bookingStep, setBookingStep] = useState(1); // 1: Hospitals, 2: Doctors, 3: Schedule, 4: Confirm
   const [hospitals, setHospitals] = useState<any[]>([]);
@@ -127,11 +154,11 @@ const PatientDashboard: React.FC = () => {
         window.location.href = '/login?role=patient&expired=true';
         return;
       }
-      
+
       setLoading(true);
-      
+
       // Load all patient data in parallel
-      const [profileResponse, appointmentsResponse, scansResponse, notificationsResponse] = await Promise.all([
+      const [profileResponse, appointmentsResponse, scansResponse, prescriptionsResponse, notificationsResponse] = await Promise.all([
         patientAPI.getProfile().catch(err => {
           console.error('Profile fetch error:', err);
           // If token error, don't continue with other calls
@@ -152,6 +179,12 @@ const PatientDashboard: React.FC = () => {
           }
           return [];
         }),
+        patientAPI.getPrescriptions().catch((err: any) => {
+          if (err.code === 'TOKEN_EXPIRED' || err.code === 'INVALID_TOKEN' || err.shouldRedirect) {
+            throw err;
+          }
+          return [];
+        }),
         patientAPI.getNotifications().catch(err => {
           if (err.code === 'TOKEN_EXPIRED' || err.code === 'INVALID_TOKEN' || err.shouldRedirect) {
             throw err;
@@ -165,7 +198,7 @@ const PatientDashboard: React.FC = () => {
       if (profileResponse && profileResponse.success) {
         profileData = profileResponse.data || profileResponse;
       }
-      
+
       // Use profile data from API, fallback to localStorage if API fails
       if (profileData && profileData.name) {
         setUser(profileData);
@@ -181,23 +214,82 @@ const PatientDashboard: React.FC = () => {
       }
 
       // Handle appointments - check if wrapped in array or response object
-      const appointmentsData = Array.isArray(appointmentsResponse) 
-        ? appointmentsResponse 
+      const rawAppointments = Array.isArray(appointmentsResponse)
+        ? appointmentsResponse
         : (appointmentsResponse?.data || appointmentsResponse?.appointments || []);
-      setAppointments(appointmentsData);
+
+      // Transform backend appointment format to frontend format
+      const transformedAppointments = await Promise.all(
+        rawAppointments.map(async (apt: any) => {
+          // If already in frontend format, return as is
+          if (apt.doctorName && apt.date) {
+            return apt;
+          }
+
+          // Transform backend format to frontend format
+          // First check if doctorDetails is already populated from backend
+          let doctorName = apt.doctorDetails?.name || apt.doctorName || 'Doctor';
+
+          // If still not found, try to fetch from API
+          if ((!doctorName || doctorName === 'Doctor') && apt.doctorId) {
+            try {
+              // Try to get doctor details
+              const doctorResponse = await patientAPI.getDoctorDetails(apt.doctorId);
+              const doctorData = doctorResponse?.data || doctorResponse;
+              doctorName = doctorData?.name || doctorData?.userId?.name || 'Doctor';
+            } catch (err) {
+              console.warn('Could not fetch doctor details:', err);
+            }
+          }
+
+          return {
+            _id: apt.appointmentId || apt._id,
+            appointmentId: apt.appointmentId,
+            doctorName: doctorName,
+            doctorId: apt.doctorId,
+            date: apt.appointmentDate || apt.date,
+            time: apt.appointmentTime || apt.time,
+            type: apt.type || 'consultation',
+            status: apt.status || 'scheduled',
+            qrCode: apt.qrCode,
+            meetingLink: apt.meetingLink,
+            symptoms: Array.isArray(apt.symptoms) ? apt.symptoms.join(', ') : (apt.symptoms || '')
+          };
+        })
+      );
+
+      setAppointments(transformedAppointments);
+
+      // Handle prescriptions - check if wrapped in array or response object
+      const prescriptionsData = Array.isArray(prescriptionsResponse)
+        ? prescriptionsResponse
+        : (prescriptionsResponse?.data || prescriptionsResponse?.prescriptions || []);
+      console.log('📋 Loaded prescriptions:', prescriptionsData.length);
+      prescriptionsData.forEach((p: any) => {
+        console.log('  - Prescription:', {
+          prescriptionId: p.prescriptionId,
+          appointmentId: p.appointmentId,
+          hasDigital: !!p.digitalPrescription,
+          hasImage: !!p.imagePrescription,
+          diagnosis: p.diagnosis || p.digitalPrescription?.diagnosis || 'N/A',
+          notes: (p.notes || p.digitalPrescription?.notes || '').substring(0, 30) + '...',
+          medicinesCount: p.digitalPrescription?.medicines?.length || 0
+        });
+      });
+      setPrescriptions(prescriptionsData);
 
       // Handle scans - check if wrapped in array or response object
-      const scansData = Array.isArray(scansResponse) 
-        ? scansResponse 
+      const scansData = Array.isArray(scansResponse)
+        ? scansResponse
         : (scansResponse?.data || scansResponse?.scans || []);
       setScans(scansData);
 
       // Handle notifications - check if wrapped in array or response object
-      const notificationsData = Array.isArray(notificationsResponse) 
-        ? notificationsResponse 
+      const notificationsData = Array.isArray(notificationsResponse)
+        ? notificationsResponse
         : (notificationsResponse?.data || notificationsResponse?.notifications || []);
       setNotifications(notificationsData);
-      
+
       // Update user settings with real data from profile
       if (profileData) {
         const personalInfo = profileData.personalInfo || {};
@@ -219,18 +311,18 @@ const PatientDashboard: React.FC = () => {
 
     } catch (error: any) {
       console.error('Error loading user data:', error);
-      
+
       // Check for token expiration or invalid token
       const errorMessage = error.message || '';
       const errorCode = error.code || '';
-      const isTokenExpired = errorMessage.includes('expired') || 
-                            errorMessage.includes('TOKEN_EXPIRED') ||
-                            errorCode === 'TOKEN_EXPIRED';
-      const isInvalidToken = errorMessage.includes('Invalid') || 
-                            errorMessage.includes('INVALID_TOKEN') ||
-                            errorCode === 'INVALID_TOKEN' ||
-                            error.status === 403;
-      
+      const isTokenExpired = errorMessage.includes('expired') ||
+        errorMessage.includes('TOKEN_EXPIRED') ||
+        errorCode === 'TOKEN_EXPIRED';
+      const isInvalidToken = errorMessage.includes('Invalid') ||
+        errorMessage.includes('INVALID_TOKEN') ||
+        errorCode === 'INVALID_TOKEN' ||
+        error.status === 403;
+
       if (isTokenExpired || isInvalidToken || (error as any).shouldRedirect) {
         // Token expired or invalid - clear storage and redirect to login
         console.warn('⚠️ Token expired or invalid, redirecting to login');
@@ -239,14 +331,14 @@ const PatientDashboard: React.FC = () => {
         window.location.href = '/login?role=patient';
         return;
       }
-      
+
       // Other auth errors (401/403)
       const isAuthError = error.status === 401 || error.status === 403 ||
-                         errorMessage.includes('401') || 
-                         errorMessage.includes('403') ||
-                         errorMessage.includes('token') ||
-                         errorMessage.includes('Authentication');
-      
+        errorMessage.includes('401') ||
+        errorMessage.includes('403') ||
+        errorMessage.includes('token') ||
+        errorMessage.includes('Authentication');
+
       if (isAuthError) {
         // Any auth error - redirect to login immediately
         console.warn('⚠️ Auth error detected, redirecting to login');
@@ -260,16 +352,16 @@ const PatientDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [navigate]);
+  }, [/* navigate removed (not used) */]);
 
   // Load nearby hospitals - MUST be defined before getUserLocation
   const loadHospitals = useCallback(async (lat?: number, lon?: number, city?: string) => {
     // Declare cityToSearch outside try block so it's available in catch block
     const cityToSearch = city || searchCity;
-    
+
     try {
       setLoadingHospitals(true);
-      
+
       // Check token before making request
       const token = localStorage.getItem('accessToken') || localStorage.getItem('token') || localStorage.getItem('authToken');
       if (!token) {
@@ -280,9 +372,9 @@ const PatientDashboard: React.FC = () => {
         return;
       }
       console.log('🔑 Token found, length:', token.length);
-      
+
       const params: any = {};
-      
+
       // PRIORITY: Location-based search (EXACT hos behavior - location only, no city)
       if (lat && lon) {
         params.latitude = lat;
@@ -297,20 +389,20 @@ const PatientDashboard: React.FC = () => {
           console.log('🏙️ City search (fallback, no location):', cityToSearch.trim());
         }
       }
-      
+
       console.log('🔍 Loading hospitals with params:', params);
       console.log('🔍 City to search:', cityToSearch);
-      
+
       try {
         const response = await patientAPI.getHospitals(params);
-                console.log('📡 Hospitals API response:', response);
-                console.log('📡 Response type:', typeof response);
-                console.log('📡 Is array?', Array.isArray(response));
-                console.log('📡 Full response:', JSON.stringify(response, null, 2).substring(0, 500));
-        
+        console.log('📡 Hospitals API response:', response);
+        console.log('📡 Response type:', typeof response);
+        console.log('📡 Is array?', Array.isArray(response));
+        console.log('📡 Full response:', JSON.stringify(response, null, 2).substring(0, 500));
+
         // Handle both response formats: { success: true, data: [...] } or direct array
         let hospitalsList: any[] = [];
-        
+
         if (Array.isArray(response)) {
           hospitalsList = response;
           console.log('✅ Response is direct array');
@@ -330,7 +422,7 @@ const PatientDashboard: React.FC = () => {
           console.warn('⚠️ Unexpected response type:', typeof response);
           hospitalsList = [];
         }
-        
+
         console.log('✅ Hospitals loaded:', hospitalsList.length);
         if (hospitalsList.length > 0) {
           console.log('🏥 Sample hospital:', {
@@ -339,7 +431,7 @@ const PatientDashboard: React.FC = () => {
             distance: hospitalsList[0].distance
           });
         }
-        
+
         if (hospitalsList.length === 0) {
           if (cityToSearch) {
             console.warn('⚠️ No hospitals found for city:', cityToSearch);
@@ -349,7 +441,7 @@ const PatientDashboard: React.FC = () => {
             alert('No hospitals found. Please try searching by city or allow location access.');
           }
         }
-        
+
         setHospitals(hospitalsList);
       } catch (apiError: any) {
         console.error('❌ API Error in try block:', apiError);
@@ -361,22 +453,22 @@ const PatientDashboard: React.FC = () => {
       console.error('Error stack:', error.stack);
       console.error('Error status:', (error as any).status);
       console.error('Error response:', (error as any).response);
-      
+
       // Check for specific error codes
       const errorMessage = error.message || '';
       const errorCode = error.code || '';
       const isAuthError = error.status === 401 || error.status === 403 ||
-                         errorMessage.includes('Authentication') || 
-                         errorMessage.includes('token') || 
-                         errorMessage.includes('401') ||
-                         errorMessage.includes('403') ||
-                         errorMessage.includes('TOKEN_EXPIRED') ||
-                         errorMessage.includes('INVALID_TOKEN') ||
-                         errorMessage.includes('NO_TOKEN') ||
-                         errorCode === 'TOKEN_EXPIRED' ||
-                         errorCode === 'INVALID_TOKEN' ||
-                         (error as any).shouldRedirect;
-      
+        errorMessage.includes('Authentication') ||
+        errorMessage.includes('token') ||
+        errorMessage.includes('401') ||
+        errorMessage.includes('403') ||
+        errorMessage.includes('TOKEN_EXPIRED') ||
+        errorMessage.includes('INVALID_TOKEN') ||
+        errorMessage.includes('NO_TOKEN') ||
+        errorCode === 'TOKEN_EXPIRED' ||
+        errorCode === 'INVALID_TOKEN' ||
+        (error as any).shouldRedirect;
+
       if (isAuthError) {
         // Auth error - redirect immediately
         console.warn('⚠️ Authentication error detected, redirecting to login');
@@ -384,7 +476,7 @@ const PatientDashboard: React.FC = () => {
         window.location.href = '/login?role=patient&expired=true';
         return;
       }
-      
+
       // If city search failed, try without city filter as fallback
       if (cityToSearch && cityToSearch.trim()) {
         console.log('🔄 City search failed, trying without city filter...');
@@ -395,10 +487,10 @@ const PatientDashboard: React.FC = () => {
             fallbackParams.longitude = lon;
           }
           const fallbackResponse = await patientAPI.getHospitals(fallbackParams);
-          const fallbackList = Array.isArray(fallbackResponse) 
-            ? fallbackResponse 
+          const fallbackList = Array.isArray(fallbackResponse)
+            ? fallbackResponse
             : (fallbackResponse?.data || []);
-          
+
           if (fallbackList.length > 0) {
             console.log('✅ Fallback successful, loaded', fallbackList.length, 'hospitals');
             setHospitals(fallbackList);
@@ -409,7 +501,7 @@ const PatientDashboard: React.FC = () => {
           console.error('❌ Fallback also failed:', fallbackError);
         }
       }
-      
+
       setHospitals([]);
       alert(`Failed to load hospitals: ${errorMessage || 'Unknown error'}. Please check your connection and try again.`);
     } finally {
@@ -421,7 +513,7 @@ const PatientDashboard: React.FC = () => {
   const getUserLocation = useCallback(() => {
     console.log('📍 Requesting user location...');
     setLoadingHospitals(true);
-    
+
     if (!navigator.geolocation) {
       console.error('❌ Geolocation is not supported by this browser');
       alert('📍 Location access is not supported by your browser. Please search by city instead.');
@@ -442,12 +534,12 @@ const PatientDashboard: React.FC = () => {
           longitude: position.coords.longitude,
           accuracy: position.coords.accuracy + ' meters'
         });
-        
+
         const location = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude
         };
-        
+
         setUserLocation(location);
         loadHospitals(location.latitude, location.longitude);
       },
@@ -456,10 +548,10 @@ const PatientDashboard: React.FC = () => {
         console.error('Error code:', error.code);
         console.error('Error message:', error.message);
         setLoadingHospitals(false);
-        
+
         let errorMessage = 'Failed to get your location. ';
-        
-        switch(error.code) {
+
+        switch (error.code) {
           case error.PERMISSION_DENIED:
             errorMessage += '📍 Location access was denied. Please allow location access in your browser settings or search by city.';
             alert(errorMessage);
@@ -477,7 +569,7 @@ const PatientDashboard: React.FC = () => {
             alert(errorMessage);
             break;
         }
-        
+
         // Load hospitals without location (default to Mumbai)
         setUserLocation(null);
         loadHospitals();
@@ -500,11 +592,11 @@ const PatientDashboard: React.FC = () => {
 
   useEffect(() => {
     // Check if user is logged in - check for new token format first, then fallback to old
-    const token = localStorage.getItem('accessToken') || 
-                  localStorage.getItem('token') || 
-                  localStorage.getItem('authToken');
+    const token = localStorage.getItem('accessToken') ||
+      localStorage.getItem('token') ||
+      localStorage.getItem('authToken');
     const userData = localStorage.getItem('userData');
-    
+
     if (!token || !userData) {
       console.warn('⚠️ No token or userData found, redirecting to login');
       console.warn('🔍 Token check:', {
@@ -522,7 +614,7 @@ const PatientDashboard: React.FC = () => {
     try {
       const parsedUser = JSON.parse(userData);
       setUser(parsedUser);
-      
+
       // Load real data from API
       loadUserData();
     } catch (error) {
@@ -557,7 +649,7 @@ const PatientDashboard: React.FC = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
+
       alert('✅ Medical report downloaded successfully!');
     } catch (error) {
       console.error('Error downloading report:', error);
@@ -565,12 +657,149 @@ const PatientDashboard: React.FC = () => {
     }
   };
 
+  const downloadIndividualAppointmentReport = async (appointment: Appointment) => {
+    // First, refresh prescriptions to get latest data
+    let currentPrescriptions = prescriptions;
+    try {
+      const prescriptionsResponse = await patientAPI.getPrescriptions();
+      const freshPrescriptions = Array.isArray(prescriptionsResponse)
+        ? prescriptionsResponse
+        : (prescriptionsResponse?.data || prescriptionsResponse?.prescriptions || []);
+      setPrescriptions(freshPrescriptions);
+      currentPrescriptions = freshPrescriptions; // Use fresh data
+      console.log('🔄 Refreshed prescriptions before download:', freshPrescriptions.length);
+    } catch (error) {
+      console.error('Error refreshing prescriptions:', error);
+    }
+
+    // Try multiple matching strategies with fresh prescriptions
+    const appointmentPrescription = currentPrescriptions.find(
+      p => {
+        const match1 = p.appointmentId === appointment.appointmentId;
+        const match2 = p.appointmentId === appointment._id;
+        const match3 = p.appointmentId === String(appointment.appointmentId);
+        const match4 = p.appointmentId === String(appointment._id);
+        return match1 || match2 || match3 || match4;
+      }
+    );
+
+    console.log('🔍 Download Report Debug:', {
+      appointmentId: appointment.appointmentId,
+      appointment_id: appointment._id,
+      totalPrescriptions: currentPrescriptions.length,
+      foundPrescription: !!appointmentPrescription,
+      prescriptionData: appointmentPrescription ? {
+        prescriptionId: appointmentPrescription.prescriptionId,
+        appointmentId: appointmentPrescription.appointmentId,
+        hasDiagnosis: !!(appointmentPrescription.diagnosis || appointmentPrescription.digitalPrescription?.diagnosis),
+        hasNotes: !!(appointmentPrescription.notes || appointmentPrescription.digitalPrescription?.notes),
+        notesPreview: (appointmentPrescription.notes || appointmentPrescription.digitalPrescription?.notes || '').substring(0, 100),
+        hasMedicines: !!(appointmentPrescription.digitalPrescription?.medicines?.length),
+        hasImage: !!appointmentPrescription.imagePrescription
+      } : null
+    });
+
+    try {
+      // Prepare prescription data for PDF
+      let prescriptionData = null;
+      let imageUrl: string | undefined = undefined;
+
+      if (appointmentPrescription) {
+        // Get image URL if available
+        if (appointmentPrescription.imagePrescription?.filePath) {
+          imageUrl = `http://localhost:5001${appointmentPrescription.imagePrescription.filePath}`;
+        }
+
+        // Get diagnosis (check both top level and digitalPrescription)
+        const diagnosis = appointmentPrescription.diagnosis || appointmentPrescription.digitalPrescription?.diagnosis || '';
+
+        // Get notes (check both top level and digitalPrescription)
+        const notes = appointmentPrescription.notes || appointmentPrescription.digitalPrescription?.notes || '';
+
+        // Get medicines
+        const medicines = appointmentPrescription.digitalPrescription?.medicines || [];
+
+        console.log('📋 Prescription Data for PDF:', {
+          diagnosis,
+          notes: notes.substring(0, 50) + '...',
+          medicinesCount: medicines.length,
+          hasImage: !!imageUrl
+        });
+
+        prescriptionData = {
+          diagnosis: diagnosis,
+          medicines: medicines,
+          notes: notes,
+          imageUrl: imageUrl
+        };
+      } else {
+        console.warn('⚠️ No prescription found for appointment:', appointment.appointmentId);
+        // Try to fetch prescription directly from API
+        try {
+          const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+          const response = await fetch(`http://localhost:5001/api/v1/prescriptions/patient`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await response.json();
+          const allPrescriptions = data.data || data || [];
+          console.log('📋 All prescriptions from API:', allPrescriptions.length);
+
+          const foundPrescription = allPrescriptions.find((p: any) =>
+            p.appointmentId === appointment.appointmentId ||
+            p.appointmentId === appointment._id ||
+            String(p.appointmentId) === String(appointment.appointmentId)
+          );
+
+          if (foundPrescription) {
+            console.log('✅ Found prescription via API:', foundPrescription.prescriptionId);
+            const diagnosis = foundPrescription.diagnosis || foundPrescription.digitalPrescription?.diagnosis || '';
+            const notes = foundPrescription.notes || foundPrescription.digitalPrescription?.notes || '';
+            const medicines = foundPrescription.digitalPrescription?.medicines || [];
+            const imagePath = foundPrescription.imagePrescription?.filePath;
+
+            prescriptionData = {
+              diagnosis: diagnosis,
+              medicines: medicines,
+              notes: notes,
+              imageUrl: imagePath ? `http://localhost:5001${imagePath}` : undefined
+            };
+          }
+        } catch (err) {
+          console.error('Error fetching prescription from API:', err);
+        }
+      }
+
+      // Generate PDF
+      await generateMedicalReportPDF(
+        {
+          appointmentId: appointment.appointmentId || appointment._id,
+          doctorName: appointment.doctorName || 'N/A',
+          date: appointment.date,
+          time: appointment.time,
+          type: appointment.type || 'consultation',
+          symptoms: appointment.symptoms
+        },
+        prescriptionData,
+        user?.name || 'Patient'
+      );
+
+      if (prescriptionData && (prescriptionData.diagnosis || prescriptionData.notes || prescriptionData.medicines?.length > 0)) {
+        alert('✅ Medical report PDF downloaded successfully with prescription details!');
+      } else {
+        alert('⚠️ Medical report PDF downloaded, but no prescription data found. Please check if doctor has completed the consultation.');
+      }
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('❌ Failed to generate PDF report. Please try again.');
+    }
+  };
+
 
   // Load doctors by hospital
-  const loadDoctors = async (hospitalId: string) => {
+  const loadDoctors = async (hospitalId: string, hospitalName?: string) => {
     try {
       setLoadingDoctors(true);
-      const response = await patientAPI.getDoctorsByHospital(hospitalId);
+      const response = await patientAPI.getDoctorsByHospital(hospitalId, hospitalName);
       setDoctors(response.data?.doctors || []);
     } catch (error: any) {
       console.error('Error loading doctors:', error);
@@ -584,7 +813,7 @@ const PatientDashboard: React.FC = () => {
   const selectHospital = (hospital: any) => {
     setSelectedHospital(hospital);
     setBookingForm(prev => ({ ...prev, hospitalId: hospital.hospitalId }));
-    loadDoctors(hospital.hospitalId);
+    loadDoctors(hospital.hospitalId, hospital.hospitalName);
     setBookingStep(2);
   };
 
@@ -603,29 +832,73 @@ const PatientDashboard: React.FC = () => {
     }
 
     try {
+      // Get patientId from user profile
+      let currentPatientId = user?.patientId || user?.roleSpecificId;
+
+      if (!currentPatientId) {
+        // Try to get from profile API
+        try {
+          const profileResponse = await patientAPI.getProfile();
+          const profileData = profileResponse?.data || profileResponse;
+          currentPatientId = profileData?.patientId || profileData?.roleSpecificId;
+
+          if (profileData) {
+            setUser(profileData);
+          }
+        } catch (err) {
+          console.error('Error fetching profile:', err);
+        }
+      }
+
+      if (!currentPatientId) {
+        alert('❌ Patient ID not found. Please refresh and try again.');
+        return;
+      }
+
       const appointmentData = {
-        hospitalId: bookingForm.hospitalId,
+        patientId: currentPatientId,
         doctorId: bookingForm.doctorId,
+        hospitalId: bookingForm.hospitalId, // Include hospitalId when booking
         appointmentDate: bookingForm.date,
         appointmentTime: bookingForm.time,
-        type: bookingForm.type,
+        type: bookingForm.type || 'consultation',
         symptoms: bookingForm.symptoms ? [bookingForm.symptoms] : []
       };
 
       const response = await patientAPI.bookAppointment(appointmentData);
-      const newAppointment = response.data || response;
-      
-      setAppointments(prev => [newAppointment, ...prev]);
+      const appointmentResponse = response.data || response;
+
+      // Transform backend response to frontend format
+      const transformedAppointment = {
+        _id: appointmentResponse.appointmentId || appointmentResponse._id,
+        appointmentId: appointmentResponse.appointmentId,
+        doctorName: selectedDoctor?.name || selectedDoctor?.userId?.name || 'Doctor',
+        doctorId: appointmentResponse.doctorId,
+        date: appointmentResponse.appointmentDate || bookingForm.date,
+        time: appointmentResponse.appointmentTime || bookingForm.time,
+        type: appointmentResponse.type || bookingForm.type,
+        status: appointmentResponse.status || 'scheduled',
+        qrCode: appointmentResponse.qrCode,
+        meetingLink: appointmentResponse.meetingLink,
+        symptoms: Array.isArray(appointmentResponse.symptoms)
+          ? appointmentResponse.symptoms.join(', ')
+          : (appointmentResponse.symptoms || bookingForm.symptoms)
+      };
+
+      setAppointments(prev => [transformedAppointment, ...prev]);
       setBookingForm({ hospitalId: '', doctorId: '', date: '', time: '', type: 'consultation', symptoms: '' });
       setShowBookingForm(false);
       setBookingStep(1);
       setSelectedHospital(null);
       setSelectedDoctor(null);
-      
+
       // Show the QR code immediately after booking
-      setShowNewAppointmentQR(newAppointment);
-      
+      setShowNewAppointmentQR(transformedAppointment);
+
       alert('✅ Appointment booked successfully!');
+
+      // Reload appointments to get fresh data from backend
+      loadUserData();
     } catch (error: any) {
       console.error('Error booking appointment:', error);
       alert('❌ Failed to book appointment: ' + (error.message || 'Unknown error'));
@@ -647,20 +920,49 @@ const PatientDashboard: React.FC = () => {
     }
   };
 
-  const showQRCode = (appointment: Appointment) => {
-    setShowQRModal(appointment);
+  const showQRCode = async (appointment: Appointment) => {
+    // Ensure doctorName is populated before showing QR code
+    if (!appointment.doctorName || appointment.doctorName === 'Doctor') {
+      if (appointment.doctorId) {
+        try {
+          const doctorResponse = await patientAPI.getDoctorDetails(appointment.doctorId);
+          const doctorData = doctorResponse?.data || doctorResponse;
+          const doctorName = doctorData?.name || doctorData?.userId?.name || 'Doctor';
+          setShowQRModal({ ...appointment, doctorName });
+        } catch (err) {
+          console.warn('Could not fetch doctor details for QR code:', err);
+          setShowQRModal(appointment);
+        }
+      } else {
+        setShowQRModal(appointment);
+      }
+    } else {
+      setShowQRModal(appointment);
+    }
+  };
+
+  const handleCancelAppointment = async (appointmentId: string) => {
+    try {
+      await patientAPI.cancelAppointment(appointmentId);
+      alert('✅ Appointment cancelled successfully');
+      // Reload appointments
+      await loadUserData();
+    } catch (error: any) {
+      console.error('Error cancelling appointment:', error);
+      alert(error.message || '❌ Failed to cancel appointment. Please try again.');
+    }
   };
 
   const markAllAsRead = async () => {
     try {
       const unreadNotifications = notifications.filter(n => n.unread);
-      
+
       await Promise.all(
-        unreadNotifications.map(notification => 
+        unreadNotifications.map(notification =>
           patientAPI.markNotificationRead(notification._id)
         )
       );
-      
+
       setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
       alert('✅ All notifications marked as read');
     } catch (error) {
@@ -686,11 +988,11 @@ const PatientDashboard: React.FC = () => {
     };
 
     alert(`📊 Your Health Metrics:\n\n` +
-          `Total Appointments: ${metrics.totalAppointments}\n` +
-          `Completed: ${metrics.completedAppointments}\n` +
-          `Total Scans: ${metrics.totalScans}\n` +
-          `Average Wait Time: ${metrics.averageWaitTime}\n` +
-          `Last Visit: ${metrics.lastVisit}`);
+      `Total Appointments: ${metrics.totalAppointments}\n` +
+      `Completed: ${metrics.completedAppointments}\n` +
+      `Total Scans: ${metrics.totalScans}\n` +
+      `Average Wait Time: ${metrics.averageWaitTime}\n` +
+      `Last Visit: ${metrics.lastVisit}`);
   };
 
   const generateHealthReport = () => {
@@ -710,22 +1012,22 @@ const PatientDashboard: React.FC = () => {
     };
 
     alert(`🏥 Health Report Generated!\n\n` +
-          `Patient: ${report.patientName}\n` +
-          `Date: ${report.reportDate}\n` +
-          `Recent Scans: ${report.healthSummary.recentScans}\n` +
-          `Upcoming Appointments: ${report.healthSummary.upcomingAppointments}\n` +
-          `Overall Health: ${report.healthSummary.overallHealth}\n\n` +
-          `Report saved to your medical records.`);
+      `Patient: ${report.patientName}\n` +
+      `Date: ${report.reportDate}\n` +
+      `Recent Scans: ${report.healthSummary.recentScans}\n` +
+      `Upcoming Appointments: ${report.healthSummary.upcomingAppointments}\n` +
+      `Overall Health: ${report.healthSummary.overallHealth}\n\n` +
+      `Report saved to your medical records.`);
   };
 
   const saveSettings = async () => {
     try {
       const updatedUser = await patientAPI.updateProfile(userSettings);
       setUser(updatedUser);
-      
+
       // Update localStorage
       localStorage.setItem('userData', JSON.stringify(updatedUser));
-      
+
       alert('✅ Settings saved successfully!');
     } catch (error: any) {
       console.error('Error saving settings:', error);
@@ -737,14 +1039,14 @@ const PatientDashboard: React.FC = () => {
     // Create a canvas to convert the QR code to image
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    
+
     canvas.width = 300;
     canvas.height = 300;
-    
+
     if (ctx) {
       ctx.fillStyle = 'white';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
+
       ctx.fillStyle = 'black';
       ctx.font = '12px monospace';
       ctx.textAlign = 'center';
@@ -754,7 +1056,7 @@ const PatientDashboard: React.FC = () => {
       ctx.fillText(`Doctor: ${appointment.doctorName}`, canvas.width / 2, 80);
       ctx.fillText(`Date: ${appointment.date}`, canvas.width / 2, 100);
       ctx.fillText(`Time: ${appointment.time}`, canvas.width / 2, 120);
-      
+
       const patternSize = 8;
       const startX = 50;
       const startY = 140;
@@ -766,7 +1068,7 @@ const PatientDashboard: React.FC = () => {
         }
       }
     }
-    
+
     canvas.toBlob((blob) => {
       if (blob) {
         const url = URL.createObjectURL(blob);
@@ -812,7 +1114,7 @@ const PatientDashboard: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-blue-500">
           <div className="flex items-center">
             <div className="text-3xl text-blue-500 mr-4">📅</div>
@@ -822,7 +1124,7 @@ const PatientDashboard: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-yellow-500">
           <div className="flex items-center">
             <div className="text-3xl text-yellow-500 mr-4">🔔</div>
@@ -832,7 +1134,7 @@ const PatientDashboard: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-purple-500">
           <div className="flex items-center">
             <div className="text-3xl text-purple-500 mr-4">🏥</div>
@@ -858,12 +1160,11 @@ const PatientDashboard: React.FC = () => {
                     <p className="text-sm text-gray-600">{new Date(scan.uploadDate).toLocaleDateString()}</p>
                   </div>
                   <div className="text-right">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      scan.status === 'doctor_reviewed' ? 'bg-green-100 text-green-800' :
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${scan.status === 'doctor_reviewed' ? 'bg-green-100 text-green-800' :
                       scan.status === 'analysis_complete' ? 'bg-blue-100 text-blue-800' :
-                      scan.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                        scan.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-gray-100 text-gray-800'
+                      }`}>
                       {scan.status.replace('_', ' ')}
                     </span>
                     {scan.aiResults && (
@@ -895,22 +1196,21 @@ const PatientDashboard: React.FC = () => {
                     </p>
                   </div>
                   <div className="text-right">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      appointment.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${appointment.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                       'bg-blue-100 text-blue-800'
-                    }`}>
+                      }`}>
                       {appointment.status}
                     </span>
                     <div className="mt-2 space-x-2">
                       {appointment.meetingLink && (
-                        <button 
+                        <button
                           onClick={() => joinVideoCall(appointment)}
                           className="text-xs text-green-600 hover:text-green-800 bg-green-100 px-2 py-1 rounded"
                         >
                           📹 Join Call
                         </button>
                       )}
-                      <button 
+                      <button
                         onClick={() => showQRCode(appointment)}
                         className="text-xs text-blue-600 hover:text-blue-800 bg-blue-100 px-2 py-1 rounded"
                       >
@@ -933,43 +1233,43 @@ const PatientDashboard: React.FC = () => {
           <div className="text-4xl mb-4">🏥</div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Find Hospitals</h3>
           <p className="text-gray-600 mb-4">Find nearby hospitals and book appointments</p>
-          <button 
+          <button
             onClick={() => navigate('/find-hospitals')}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 w-full font-medium"
           >
             Find Hospitals →
           </button>
         </div>
-        
+
         <div className="bg-white rounded-lg shadow-lg p-6 text-center">
           <div className="text-4xl mb-4">📝</div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Add Medical Notes</h3>
           <p className="text-gray-600 mb-4">Document symptoms or health concerns</p>
-          <button 
+          <button
             onClick={addMedicalNotes}
             className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
           >
             Add Notes
           </button>
         </div>
-        
+
         <div className="bg-white rounded-lg shadow-lg p-6 text-center">
           <div className="text-4xl mb-4">📊</div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Health Metrics</h3>
           <p className="text-gray-600 mb-4">View your health statistics and trends</p>
-          <button 
+          <button
             onClick={viewPerformanceMetrics}
             className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
           >
             View Metrics
           </button>
         </div>
-        
+
         <div className="bg-white rounded-lg shadow-lg p-6 text-center">
           <div className="text-4xl mb-4">📱</div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Generate Report</h3>
           <p className="text-gray-600 mb-4">Create comprehensive health summary</p>
-          <button 
+          <button
             onClick={generateHealthReport}
             className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600"
           >
@@ -980,88 +1280,378 @@ const PatientDashboard: React.FC = () => {
     </div>
   );
 
-  const renderMedicalHistory = () => (
-    <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-bold text-gray-900">Complete Medical History</h3>
-          <button 
-            onClick={downloadReport}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
-          >
-            📥 Download Report
-          </button>
-        </div>
-        
-        {scans.length > 0 ? (
-          <div className="space-y-4">
-            {scans.map(scan => (
-              <div key={scan._id} className="border border-gray-200 rounded-lg p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h4 className="text-xl font-semibold text-gray-900">{scan.scanType}</h4>
-                    <p className="text-gray-600">Scan ID: {scan._id}</p>
-                    <p className="text-gray-600">Date: {new Date(scan.uploadDate).toLocaleDateString()}</p>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                    scan.status === 'doctor_reviewed' ? 'bg-green-100 text-green-800' :
-                    scan.status === 'analysis_complete' ? 'bg-blue-100 text-blue-800' :
-                    scan.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {scan.status.replace('_', ' ')}
-                  </span>
-                </div>
-                
-                {scan.aiResults && (
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <h5 className="font-semibold text-gray-900 mb-3">
-                      🤖 AI Analysis Results (Confidence: {(scan.aiResults.confidence * 100).toFixed(1)}%)
-                    </h5>
-                    
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <h6 className="font-medium text-gray-700 mb-2">Findings:</h6>
-                        <ul className="list-disc list-inside space-y-1">
-                          {scan.aiResults.findings.map((finding, index) => (
-                            <li key={index} className="text-sm text-gray-600">{finding}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      
-                      <div>
-                        <h6 className="font-medium text-gray-700 mb-2">Recommendations:</h6>
-                        <ul className="list-disc list-inside space-y-1">
-                          {scan.aiResults.recommendations.map((rec, index) => (
-                            <li key={index} className="text-sm text-gray-600">{rec}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                {scan.status === 'processing' && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
-                    <div className="flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600 mr-3"></div>
-                      <p className="text-yellow-800">AI analysis in progress... Estimated completion: 2-3 minutes</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+  // Refresh prescriptions when medical history tab is active
+  useEffect(() => {
+    if (activeTab === 'history') {
+      const refreshPrescriptions = async () => {
+        try {
+          const prescriptionsResponse = await patientAPI.getPrescriptions();
+          const prescriptionsData = Array.isArray(prescriptionsResponse)
+            ? prescriptionsResponse
+            : (prescriptionsResponse?.data || prescriptionsResponse?.prescriptions || []);
+          setPrescriptions(prescriptionsData);
+          console.log('🔄 Refreshed prescriptions:', prescriptionsData.length);
+        } catch (error) {
+          console.error('Error refreshing prescriptions:', error);
+        }
+      };
+
+      refreshPrescriptions();
+    }
+  }, [activeTab]);
+
+  const renderMedicalHistory = () => {
+    const completedAppointments = appointments.filter(apt => apt.status === 'completed');
+
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-2xl font-bold text-gray-900">Complete Medical History</h3>
+            <button
+              onClick={downloadReport}
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center gap-2"
+            >
+              <span>📥</span>
+              <span>Download All Reports</span>
+            </button>
           </div>
-        ) : (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">🩺</div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Medical History Yet</h3>
-            <p className="text-gray-600">Your medical scans and reports will appear here once available.</p>
+
+          {completedAppointments.length > 0 ? (
+            <div className="space-y-4 max-h-[600px] overflow-y-auto">
+              {completedAppointments.map(appointment => {
+                const appointmentPrescription = prescriptions.find(
+                  p => p.appointmentId === appointment.appointmentId || p.appointmentId === appointment._id
+                );
+
+                return (
+                  <div
+                    key={appointment._id}
+                    className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => setViewingAppointment(appointment)}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h4 className="text-xl font-semibold text-gray-900 mb-3">
+                          Appointment with {appointment.doctorName}
+                        </h4>
+                        <div className="flex items-center gap-2 text-gray-600 mb-2">
+                          <span className="text-sm">📅</span>
+                          <span className="text-sm">
+                            {new Date(appointment.date).toLocaleDateString('en-GB', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric'
+                            })}, {appointment.time}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="ml-4 text-right">
+                        <p className="text-sm text-gray-600 mb-1">
+                          <strong>Doctor:</strong> {appointment.doctorName}
+                        </p>
+                        <p className="text-sm text-gray-600 mb-1">
+                          <strong>Type:</strong> {appointment.type || 'consultation'}
+                        </p>
+                        {appointment.symptoms && (
+                          <p className="text-sm text-gray-600">
+                            <strong>Symptoms:</strong> {appointment.symptoms}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-4 flex justify-end">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          downloadIndividualAppointmentReport(appointment);
+                        }}
+                        className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 text-sm font-semibold flex items-center gap-2"
+                      >
+                        <span>📥</span>
+                        <span>Download</span>
+                      </button>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          // Generate Blob URL and Open
+                          try {
+                            const aptData = {
+                              appointmentId: appointment.appointmentId || appointment._id,
+                              doctorName: appointment.doctorName,
+                              date: appointment.date,
+                              time: appointment.time,
+                              type: appointment.type || 'consultation',
+                              symptoms: appointment.symptoms || ''
+                            };
+
+                            const appointmentPrescription = prescriptions.find(
+                              p => p.appointmentId === appointment.appointmentId || p.appointmentId === appointment._id
+                            );
+
+                            const presData = appointmentPrescription ? {
+                              diagnosis: appointmentPrescription.diagnosis || appointmentPrescription.digitalPrescription?.diagnosis,
+                              medicines: appointmentPrescription.digitalPrescription?.medicines,
+                              notes: appointmentPrescription.notes || appointmentPrescription.digitalPrescription?.notes,
+                              imageUrl: appointmentPrescription.imagePrescription?.filePath
+                            } : null;
+
+                            const blobUrl = await generateMedicalReportPDFBlobUrl(
+                              aptData,
+                              presData,
+                              user?.name || 'Patient'
+                            );
+                            window.open(blobUrl, '_blank');
+                          } catch (err) {
+                            console.error('Error opening PDF:', err);
+                            alert('Could not generate PDF preview');
+                          }
+                        }}
+                        className="ml-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 text-sm font-semibold flex items-center gap-2"
+                      >
+                        <span>👁️</span>
+                        <span>View</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">🩺</div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No Medical History Yet</h3>
+              <p className="text-gray-600">Your completed appointments will appear here once available.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Appointment Details Modal */}
+        {viewingAppointment && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900">Appointment Details</h3>
+                  <button
+                    onClick={() => setViewingAppointment(null)}
+                    className="text-gray-500 hover:text-gray-700 text-2xl"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="border-b pb-4">
+                    <h4 className="text-xl font-semibold text-gray-900 mb-2">
+                      Appointment with {viewingAppointment.doctorName}
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-600"><strong>Date:</strong> {new Date(viewingAppointment.date).toLocaleDateString()}</p>
+                        <p className="text-gray-600"><strong>Time:</strong> {viewingAppointment.time}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600"><strong>Type:</strong> {viewingAppointment.type || 'consultation'}</p>
+                        <p className="text-gray-600"><strong>Status:</strong> {viewingAppointment.status}</p>
+                      </div>
+                    </div>
+                    {viewingAppointment.symptoms && (
+                      <p className="text-gray-600 mt-2">
+                        <strong>Symptoms:</strong> {viewingAppointment.symptoms}
+                      </p>
+                    )}
+                  </div>
+
+                  {(() => {
+                    // Try multiple matching strategies
+                    const appointmentPrescription = prescriptions.find(
+                      p => {
+                        const match1 = p.appointmentId === viewingAppointment.appointmentId;
+                        const match2 = p.appointmentId === viewingAppointment._id;
+                        const match3 = p.appointmentId === String(viewingAppointment.appointmentId);
+                        const match4 = p.appointmentId === String(viewingAppointment._id);
+                        return match1 || match2 || match3 || match4;
+                      }
+                    );
+
+                    // Debug logging
+                    if (!appointmentPrescription) {
+                      console.log('🔍 Prescription search:', {
+                        appointmentId: viewingAppointment.appointmentId,
+                        appointment_id: viewingAppointment._id,
+                        totalPrescriptions: prescriptions.length,
+                        prescriptionAppointmentIds: prescriptions.map(p => p.appointmentId)
+                      });
+                    } else {
+                      console.log('✅ Found prescription:', {
+                        prescriptionId: appointmentPrescription.prescriptionId,
+                        hasDigital: !!appointmentPrescription.digitalPrescription,
+                        hasImage: !!appointmentPrescription.imagePrescription,
+                        medicines: appointmentPrescription.digitalPrescription?.medicines?.length || 0
+                      });
+                    }
+
+                    if (appointmentPrescription) {
+                      const hasDigitalPrescription = appointmentPrescription.digitalPrescription?.medicines && appointmentPrescription.digitalPrescription.medicines.length > 0;
+                      const hasImagePrescription = appointmentPrescription.imagePrescription?.filePath;
+                      const hasDiagnosis = appointmentPrescription.diagnosis || appointmentPrescription.digitalPrescription?.diagnosis;
+                      const hasNotes = appointmentPrescription.notes || appointmentPrescription.digitalPrescription?.notes;
+
+                      // Show prescription if there's any content
+                      if (hasDigitalPrescription || hasImagePrescription || hasDiagnosis || hasNotes) {
+                        return (
+                          <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                            <h5 className="font-semibold text-green-800 mb-3">📋 Prescription Details</h5>
+
+                            {hasDiagnosis && (
+                              <div className="mb-3">
+                                <p className="text-sm font-medium text-gray-700 mb-1">Diagnosis:</p>
+                                <p className="text-sm text-gray-600">
+                                  {appointmentPrescription.diagnosis || appointmentPrescription.digitalPrescription?.diagnosis}
+                                </p>
+                              </div>
+                            )}
+
+                            {hasDigitalPrescription && appointmentPrescription.digitalPrescription?.medicines && (
+                              <div className="mb-3">
+                                <p className="text-sm font-medium text-gray-700 mb-2">💊 Medications:</p>
+                                <ul className="space-y-2">
+                                  {appointmentPrescription.digitalPrescription.medicines.map((med: any, idx: number) => (
+                                    <li key={idx} className="text-sm text-gray-600 bg-white p-2 rounded">
+                                      <strong>{med.name}</strong> - {med.dosage} ({med.frequency}) for {med.duration}
+                                      {med.instructions && (
+                                        <p className="text-xs text-gray-500 mt-1">Instructions: {med.instructions}</p>
+                                      )}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {hasImagePrescription && appointmentPrescription.imagePrescription && (
+                              <div className="mb-3">
+                                <p className="text-sm font-medium text-gray-700 mb-2">📷 Prescription Image:</p>
+                                <div className="bg-white p-2 rounded">
+                                  <img
+                                    src={`http://localhost:5001${appointmentPrescription.imagePrescription.filePath}`}
+                                    alt="Prescription"
+                                    className="max-w-full h-auto rounded border border-gray-200"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EImage not available%3C/text%3E%3C/svg%3E';
+                                    }}
+                                  />
+                                  <p className="text-xs text-gray-500 mt-1">{appointmentPrescription.imagePrescription.fileName}</p>
+                                </div>
+                              </div>
+                            )}
+
+                            {hasNotes && (
+                              <div className="mb-3">
+                                <p className="text-sm font-medium text-gray-700 mb-1">Doctor Notes:</p>
+                                <p className="text-sm text-gray-600">
+                                  {appointmentPrescription.notes || appointmentPrescription.digitalPrescription?.notes}
+                                </p>
+                              </div>
+                            )}
+
+                            {appointmentPrescription.digitalPrescription?.followUpDate && (
+                              <div>
+                                <p className="text-sm font-medium text-gray-700 mb-1">Follow-up Date:</p>
+                                <p className="text-sm text-gray-600">
+                                  {new Date(appointmentPrescription.digitalPrescription.followUpDate).toLocaleDateString()}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <p className="text-sm text-gray-600">Prescription data is incomplete or unavailable.</p>
+                          </div>
+                        );
+                      }
+                    } else {
+                      return (
+                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                          <p className="text-sm text-gray-600">No prescription available for this appointment.</p>
+                        </div>
+                      );
+                    }
+                  })()}
+                </div>
+
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    onClick={() => setViewingAppointment(null)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={() => {
+                      downloadIndividualAppointmentReport(viewingAppointment);
+                    }}
+                    className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 flex items-center gap-2"
+                  >
+                    <span>📥</span>
+                    <span>Download Report</span>
+                  </button>
+                  <button
+                    onClick={async () => {
+                      // Generate Blob URL and Open
+                      try {
+                        const aptData = {
+                          appointmentId: viewingAppointment.appointmentId || viewingAppointment._id,
+                          doctorName: viewingAppointment.doctorName,
+                          date: viewingAppointment.date,
+                          time: viewingAppointment.time,
+                          type: viewingAppointment.type || 'consultation',
+                          symptoms: viewingAppointment.symptoms || ''
+                        };
+
+                        const appointmentPrescription = prescriptions.find(
+                          p => {
+                            const match1 = p.appointmentId === viewingAppointment.appointmentId;
+                            const match2 = p.appointmentId === viewingAppointment._id;
+                            const match3 = p.appointmentId === String(viewingAppointment.appointmentId);
+                            const match4 = p.appointmentId === String(viewingAppointment._id);
+                            return match1 || match2 || match3 || match4;
+                          }
+                        );
+
+                        const presData = appointmentPrescription ? {
+                          diagnosis: appointmentPrescription.diagnosis || appointmentPrescription.digitalPrescription?.diagnosis,
+                          medicines: appointmentPrescription.digitalPrescription?.medicines,
+                          notes: appointmentPrescription.notes || appointmentPrescription.digitalPrescription?.notes,
+                          imageUrl: appointmentPrescription.imagePrescription?.filePath
+                        } : null;
+
+                        const blobUrl = await generateMedicalReportPDFBlobUrl(
+                          aptData,
+                          presData,
+                          user?.name || 'Patient'
+                        );
+                        window.open(blobUrl, '_blank');
+                      } catch (err) {
+                        console.error('Error opening PDF:', err);
+                        alert('Could not generate PDF preview');
+                      }
+                    }}
+                    className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center gap-2"
+                  >
+                    <span>👁️</span>
+                    <span>View Report</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderAppointments = () => (
     <div className="space-y-6">
@@ -1069,7 +1659,7 @@ const PatientDashboard: React.FC = () => {
       <div className="bg-white rounded-lg shadow-lg p-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl font-bold text-gray-900">Book New Appointment</h3>
-          <button 
+          <button
             onClick={() => {
               if (showBookingForm) {
                 setShowBookingForm(false);
@@ -1201,11 +1791,10 @@ const PatientDashboard: React.FC = () => {
                         <div
                           key={hospital.hospitalId}
                           onClick={() => selectHospital(hospital)}
-                          className={`border-2 rounded-lg p-5 cursor-pointer transition-all shadow-sm ${
-                            selectedHospital?.hospitalId === hospital.hospitalId
-                              ? 'border-blue-500 bg-blue-50 shadow-md'
-                              : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50 hover:shadow-md'
-                          }`}
+                          className={`border-2 rounded-lg p-5 cursor-pointer transition-all shadow-sm ${selectedHospital?.hospitalId === hospital.hospitalId
+                            ? 'border-blue-500 bg-blue-50 shadow-md'
+                            : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50 hover:shadow-md'
+                            }`}
                         >
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
@@ -1216,11 +1805,10 @@ const PatientDashboard: React.FC = () => {
                                   </span>
                                 )}
                                 {hospital.type && (
-                                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                    hospital.type === 'Clinic' 
-                                      ? 'bg-purple-100 text-purple-700' 
-                                      : 'bg-blue-100 text-blue-700'
-                                  }`}>
+                                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${hospital.type === 'Clinic'
+                                    ? 'bg-purple-100 text-purple-700'
+                                    : 'bg-blue-100 text-blue-700'
+                                    }`}>
                                     {hospital.type === 'Clinic' ? '🏥 Clinic' : '🏨 Hospital'}
                                   </span>
                                 )}
@@ -1228,8 +1816,8 @@ const PatientDashboard: React.FC = () => {
                                 {(hospital.distanceM !== undefined || hospital.distance !== undefined) && (
                                   <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-semibold">
                                     📍 {(() => {
-                                      const meters = hospital.distanceM !== undefined 
-                                        ? hospital.distanceM 
+                                      const meters = hospital.distanceM !== undefined
+                                        ? hospital.distanceM
                                         : (hospital.distance ? hospital.distance * 1000 : 0);
                                       const km = meters / 1000;
                                       if (meters < 1000) {
@@ -1386,7 +1974,7 @@ const PatientDashboard: React.FC = () => {
                 <div className="grid md:grid-cols-2 gap-4 mb-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Appointment Type</label>
-                    <select 
+                    <select
                       value={bookingForm.type}
                       onChange={(e) => setBookingForm(prev => ({ ...prev, type: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -1399,27 +1987,27 @@ const PatientDashboard: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Date *</label>
-                    <input 
+                    <input
                       type="date"
                       value={bookingForm.date}
                       min={new Date().toISOString().split('T')[0]}
                       onChange={(e) => setBookingForm(prev => ({ ...prev, date: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Time *</label>
-                    <input 
+                    <input
                       type="time"
                       value={bookingForm.time}
                       onChange={(e) => setBookingForm(prev => ({ ...prev, time: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Symptoms (Optional)</label>
-                  <textarea 
+                  <textarea
                     value={bookingForm.symptoms}
                     onChange={(e) => setBookingForm(prev => ({ ...prev, symptoms: e.target.value }))}
                     placeholder="Describe your symptoms or reason for visit..."
@@ -1427,7 +2015,7 @@ const PatientDashboard: React.FC = () => {
                     rows={3}
                   />
                 </div>
-                <button 
+                <button
                   onClick={bookAppointment}
                   className="w-full bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 font-semibold"
                 >
@@ -1439,69 +2027,306 @@ const PatientDashboard: React.FC = () => {
         )}
       </div>
 
-      {/* Appointment History */}
+      {/* Appointments List with Tabs */}
       <div className="bg-white rounded-lg shadow-lg p-6">
-        <h3 className="text-xl font-bold text-gray-900 mb-4">Appointment History</h3>
-        {appointments.length > 0 ? (
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold text-gray-900">My Appointments</h3>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex space-x-4 mb-6 border-b">
+          <button
+            onClick={() => setAppointmentFilter('all')}
+            className={`px-4 py-2 font-semibold transition-colors ${appointmentFilter === 'all'
+              ? 'text-blue-600 border-b-2 border-blue-600'
+              : 'text-gray-600 hover:text-gray-900'
+              }`}
+          >
+            All ({appointments.length})
+          </button>
+          <button
+            onClick={() => setAppointmentFilter('upcoming')}
+            className={`px-4 py-2 font-semibold transition-colors ${appointmentFilter === 'upcoming'
+              ? 'text-blue-600 border-b-2 border-blue-600'
+              : 'text-gray-600 hover:text-gray-900'
+              }`}
+          >
+            Upcoming ({appointments.filter(apt => apt.status !== 'completed').length})
+          </button>
+          <button
+            onClick={() => setAppointmentFilter('completed')}
+            className={`px-4 py-2 font-semibold transition-colors ${appointmentFilter === 'completed'
+              ? 'text-blue-600 border-b-2 border-blue-600'
+              : 'text-gray-600 hover:text-gray-900'
+              }`}
+          >
+            Completed ({appointments.filter(apt => apt.status === 'completed').length})
+          </button>
+        </div>
+
+        {/* Filtered Appointments */}
+        {(() => {
+          const filteredAppointments = appointments.filter(apt => {
+            if (appointmentFilter === 'upcoming') return apt.status !== 'completed';
+            if (appointmentFilter === 'completed') return apt.status === 'completed';
+            return true;
+          });
+
+          if (filteredAppointments.length === 0) {
+            return (
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">
+                  {appointmentFilter === 'completed' ? '✅' : appointmentFilter === 'upcoming' ? '📅' : '📋'}
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  {appointmentFilter === 'completed'
+                    ? 'No Completed Appointments'
+                    : appointmentFilter === 'upcoming'
+                      ? 'No Upcoming Appointments'
+                      : 'No Appointments Yet'}
+                </h3>
+                <p className="text-gray-600">
+                  {appointmentFilter === 'completed'
+                    ? 'Your completed appointments will appear here.'
+                    : appointmentFilter === 'upcoming'
+                      ? 'Book an appointment to get started.'
+                      : 'Book your first appointment to get started.'}
+                </p>
+              </div>
+            );
+          }
+
+          return (
+            <div className="space-y-4">
+              {filteredAppointments.map(appointment => {
+                const appointmentPrescription = prescriptions.find(
+                  p => p.appointmentId === appointment.appointmentId || p.appointmentId === appointment._id
+                );
+
+                const downloadReport = () => {
+                  // Create report content
+                  let reportContent = `MEDICAL CONSULTATION REPORT\n`;
+                  reportContent += `================================\n\n`;
+                  reportContent += `Appointment Details:\n`;
+                  reportContent += `- Appointment ID: ${appointment.appointmentId || appointment._id}\n`;
+                  reportContent += `- Doctor: ${appointment.doctorName || 'N/A'}\n`;
+                  reportContent += `- Date: ${new Date(appointment.date).toLocaleDateString()}\n`;
+                  reportContent += `- Time: ${appointment.time}\n`;
+                  reportContent += `- Type: ${appointment.type || 'consultation'}\n`;
+                  if (appointment.symptoms) {
+                    reportContent += `- Symptoms: ${appointment.symptoms}\n`;
+                  }
+                  reportContent += `\n`;
+
+                  if (appointmentPrescription) {
+                    reportContent += `PRESCRIPTION DETAILS:\n`;
+                    reportContent += `================================\n\n`;
+
+                    if (appointmentPrescription.diagnosis || appointmentPrescription.digitalPrescription?.diagnosis) {
+                      reportContent += `Diagnosis: ${appointmentPrescription.diagnosis || appointmentPrescription.digitalPrescription?.diagnosis}\n\n`;
+                    }
+
+                    if (appointmentPrescription.digitalPrescription?.medicines && appointmentPrescription.digitalPrescription.medicines.length > 0) {
+                      reportContent += `Medications:\n`;
+                      appointmentPrescription.digitalPrescription.medicines.forEach((med: any, idx: number) => {
+                        reportContent += `${idx + 1}. ${med.name} - ${med.dosage} (${med.frequency}) for ${med.duration}\n`;
+                        if (med.instructions) {
+                          reportContent += `   Instructions: ${med.instructions}\n`;
+                        }
+                      });
+                      reportContent += `\n`;
+                    }
+
+                    if (appointmentPrescription.notes || appointmentPrescription.digitalPrescription?.notes) {
+                      reportContent += `Doctor Notes:\n`;
+                      reportContent += `${appointmentPrescription.notes || appointmentPrescription.digitalPrescription?.notes}\n\n`;
+                    }
+
+                    if (appointmentPrescription.digitalPrescription?.followUpDate) {
+                      reportContent += `Follow-up Date: ${new Date(appointmentPrescription.digitalPrescription.followUpDate).toLocaleDateString()}\n\n`;
+                    }
+                  } else {
+                    reportContent += `PRESCRIPTION:\n`;
+                    reportContent += `No prescription available for this appointment.\n\n`;
+                  }
+
+                  reportContent += `Report Generated: ${new Date().toLocaleString()}\n`;
+
+                  // Create and download file
+                  const blob = new Blob([reportContent], { type: 'text/plain' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `Medical_Report_${appointment.appointmentId || appointment._id}_${new Date().toISOString().split('T')[0]}.txt`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                };
+
+                return (
+                  <div key={appointment._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h4 className="text-lg font-semibold text-gray-900">{appointment.doctorName}</h4>
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${appointment.status === 'completed' ? 'bg-gray-100 text-gray-800' :
+                            appointment.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                              appointment.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                                'bg-blue-100 text-blue-800'
+                            }`}>
+                            {appointment.status}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1">
+                          📅 {new Date(appointment.date).toLocaleDateString()} at ⏰ {appointment.time}
+                        </p>
+                        <p className="text-sm text-gray-600 mb-1">
+                          🏥 {appointment.type || 'consultation'}
+                        </p>
+                        {appointment.symptoms && (
+                          <p className="text-sm text-gray-600 mb-2">
+                            <strong>Symptoms:</strong> {appointment.symptoms}
+                          </p>
+                        )}
+                        {appointmentPrescription && (
+                          <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                            <p className="text-sm font-semibold text-green-800 mb-1">✅ Prescription Available</p>
+                            {appointmentPrescription.diagnosis || appointmentPrescription.digitalPrescription?.diagnosis ? (
+                              <p className="text-xs text-green-700">
+                                Diagnosis: {appointmentPrescription.diagnosis || appointmentPrescription.digitalPrescription?.diagnosis}
+                              </p>
+                            ) : null}
+                          </div>
+                        )}
+                      </div>
+                      <div className="ml-4 flex flex-col gap-2">
+                        {appointment.status === 'completed' && (
+                          <button
+                            onClick={downloadReport}
+                            className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 font-semibold text-sm whitespace-nowrap"
+                          >
+                            📥 Download Report
+                          </button>
+                        )}
+                        {appointment.status !== 'completed' && appointment.status !== 'cancelled' && appointment.meetingLink && (
+                          <button
+                            onClick={() => joinVideoCall(appointment)}
+                            className="bg-green-500 text-white px-3 py-2 rounded-lg hover:bg-green-600 text-sm font-semibold"
+                          >
+                            📹 Join Call
+                          </button>
+                        )}
+                        {appointment.status !== 'completed' && appointment.status !== 'cancelled' && appointment.qrCode && (
+                          <button
+                            onClick={() => showQRCode(appointment)}
+                            className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 text-sm font-semibold"
+                          >
+                            📱 QR Code
+                          </button>
+                        )}
+                        {appointment.status !== 'completed' && appointment.status !== 'cancelled' && (
+                          <button
+                            onClick={() => {
+                              if (window.confirm('Are you sure you want to cancel this appointment?')) {
+                                handleCancelAppointment(appointment.appointmentId || appointment._id);
+                              }
+                            }}
+                            className="bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 text-sm font-semibold"
+                          >
+                            ❌ Cancel Appointment
+                          </button>
+                        )}
+                        {appointmentPrescription?.imagePrescription && (
+                          <a
+                            href={`http://localhost:5001/api/v1/prescriptions/${appointmentPrescription.prescriptionId}/download`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-purple-500 text-white px-3 py-2 rounded-lg hover:bg-purple-600 font-semibold text-sm text-center"
+                          >
+                            📄 Prescription PDF
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Prescriptions Section */}
+      <div className="bg-white rounded-lg shadow-lg p-6 mt-6">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">My Prescriptions</h3>
+        {prescriptions.length > 0 ? (
           <div className="space-y-4">
-            {appointments.map(appointment => (
-              <div key={appointment._id} className="border border-gray-200 rounded-lg p-4">
+            {prescriptions.map(prescription => (
+              <div key={prescription._id || prescription.prescriptionId} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="text-lg font-semibold text-gray-900">{appointment.doctorName}</h4>
-                    <p className="text-gray-600">{appointment.type}</p>
-                    <p className="text-gray-600">
-                      📅 {new Date(appointment.date).toLocaleDateString()} at ⏰ {appointment.time}
-                    </p>
-                    <p className="text-sm text-gray-500 mt-1">ID: {appointment._id}</p>
-                    {appointment.symptoms && (
-                      <p className="text-sm text-gray-600 mt-1">
-                        <strong>Symptoms:</strong> {appointment.symptoms}
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-lg font-semibold text-gray-900">
+                        Prescription #{prescription.prescriptionId || prescription._id}
+                      </h4>
+                      <span className="text-sm text-gray-500">
+                        {new Date(prescription.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    {prescription.diagnosis && (
+                      <p className="text-gray-700 mb-2">
+                        <strong>Diagnosis:</strong> {prescription.diagnosis}
+                      </p>
+                    )}
+
+                    {prescription.digitalPrescription?.medicines && prescription.digitalPrescription.medicines.length > 0 && (
+                      <div className="mb-3">
+                        <strong className="text-gray-700 block mb-2">Medications:</strong>
+                        <ul className="list-disc list-inside space-y-1">
+                          {prescription.digitalPrescription.medicines.map((med: any, idx: number) => (
+                            <li key={idx} className="text-gray-600">
+                              {med.name} - {med.dosage} ({med.frequency}) for {med.duration}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {prescription.notes && (
+                      <p className="text-gray-600 mb-2">
+                        <strong>Notes:</strong> {prescription.notes}
+                      </p>
+                    )}
+
+                    {prescription.digitalPrescription?.notes && (
+                      <p className="text-gray-600 mb-2">
+                        <strong>Doctor Notes:</strong> {prescription.digitalPrescription.notes}
                       </p>
                     )}
                   </div>
-                  <div className="text-right">
-                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                      appointment.status === 'completed' ? 'bg-gray-100 text-gray-800' :
-                      appointment.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                      'bg-blue-100 text-blue-800'
-                    }`}>
-                      {appointment.status}
-                    </span>
-                    <div className="mt-2 space-x-2">
-                      {appointment.meetingLink && appointment.status === 'confirmed' && (
-                        <button 
-                          onClick={() => joinVideoCall(appointment)}
-                          className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600"
-                        >
-                          🎥 Join Call
-                        </button>
-                      )}
-                      {appointment.status !== 'completed' && appointment.qrCode && (
-                        <button 
-                          onClick={() => showQRCode(appointment)}
-                          className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
-                        >
-                          📱 QR Code
-                        </button>
-                      )}
-                    </div>
+
+                  <div className="ml-4">
+                    {prescription.imagePrescription && (
+                      <a
+                        href={`http://localhost:5001/api/v1/prescriptions/${prescription.prescriptionId}/download`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 font-semibold inline-block"
+                      >
+                        📥 Download Prescription
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">📅</div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Appointments Yet</h3>
-            <p className="text-gray-600 mb-4">Book your first appointment to get started.</p>
-            <button 
-              onClick={() => setShowBookingForm(true)}
-              className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600"
-            >
-              📅 Book First Appointment
-            </button>
+          <div className="text-center py-8">
+            <div className="text-4xl mb-2">💊</div>
+            <p className="text-gray-600">No prescriptions yet. Prescriptions will appear here after your consultation.</p>
           </div>
         )}
       </div>
@@ -1514,7 +2339,7 @@ const PatientDashboard: React.FC = () => {
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-bold text-gray-900">Health Notifications</h3>
           {notifications.some(n => n.unread) && (
-            <button 
+            <button
               onClick={markAllAsRead}
               className="text-blue-600 hover:text-blue-800 font-semibold"
             >
@@ -1522,19 +2347,18 @@ const PatientDashboard: React.FC = () => {
             </button>
           )}
         </div>
-        
+
         {notifications.length > 0 ? (
           <div className="space-y-4">
             {notifications.map(notification => (
-              <div key={notification._id} className={`p-4 rounded-lg border ${
-                notification.unread ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
-              }`}>
+              <div key={notification._id} className={`p-4 rounded-lg border ${notification.unread ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
+                }`}>
                 <div className="flex items-start justify-between">
                   <div className="flex items-start">
                     <div className="text-2xl mr-3">
                       {notification.type === 'scan_result' ? '🩺' :
-                       notification.type === 'appointment' ? '📅' :
-                       notification.type === 'medication' ? '💊' : '🔔'}
+                        notification.type === 'appointment' ? '📅' :
+                          notification.type === 'medication' ? '💊' : '🔔'}
                     </div>
                     <div>
                       <h4 className="font-semibold text-gray-900">{notification.title}</h4>
@@ -1650,8 +2474,8 @@ const PatientDashboard: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">Allergies</label>
             <textarea
               value={userSettings.allergies.join(', ')}
-              onChange={(e) => setUserSettings(prev => ({ 
-                ...prev, 
+              onChange={(e) => setUserSettings(prev => ({
+                ...prev,
                 allergies: e.target.value.split(',').map(item => item.trim()).filter(item => item)
               }))}
               placeholder="Enter allergies separated by commas"
@@ -1663,8 +2487,8 @@ const PatientDashboard: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">Current Medications</label>
             <textarea
               value={userSettings.medications.join(', ')}
-              onChange={(e) => setUserSettings(prev => ({ 
-                ...prev, 
+              onChange={(e) => setUserSettings(prev => ({
+                ...prev,
                 medications: e.target.value.split(',').map(item => item.trim()).filter(item => item)
               }))}
               placeholder="Enter medications separated by commas"
@@ -1854,17 +2678,17 @@ const PatientDashboard: React.FC = () => {
             <h3 className="text-2xl font-bold text-gray-900 mb-4">
               📱 {showNewAppointmentQR ? 'New Appointment QR Code' : 'Appointment QR Code'}
             </h3>
-            
+
             {showNewAppointmentQR && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
                 <p className="text-green-800 font-semibold">✅ Appointment Booked Successfully!</p>
                 <p className="text-green-700 text-sm">Your QR code is ready for hospital check-in</p>
               </div>
             )}
-            
+
             {/* Real QR Code */}
             <div className="bg-white border-2 border-gray-300 rounded-lg p-4 mb-4 mx-auto w-64 h-64 flex items-center justify-center">
-              <QRCode 
+              <QRCode
                 value={appointmentToShow.qrCode}
                 size={200}
                 bgColor="white"
@@ -1872,24 +2696,24 @@ const PatientDashboard: React.FC = () => {
                 level="M"
               />
             </div>
-            
+
             <div className="text-left bg-gray-50 rounded-lg p-4 mb-4">
-              <p className="text-sm text-gray-600"><strong>Appointment:</strong> {appointmentToShow.doctorName}</p>
+              <p className="text-sm text-gray-600"><strong>Doctor:</strong> {appointmentToShow.doctorName || 'Doctor'}</p>
               <p className="text-sm text-gray-600"><strong>Date:</strong> {new Date(appointmentToShow.date).toLocaleDateString()}</p>
               <p className="text-sm text-gray-600"><strong>Time:</strong> {appointmentToShow.time}</p>
-              <p className="text-sm text-gray-600"><strong>Type:</strong> {appointmentToShow.type}</p>
+              <p className="text-sm text-gray-600"><strong>Type:</strong> {appointmentToShow.type || 'consultation'}</p>
               <p className="text-sm text-gray-600"><strong>Patient ID:</strong> {user?.roleSpecificId}</p>
               <p className="text-xs text-gray-500 mt-2">
                 <strong>Valid until:</strong> {appointmentToShow.date} (Appointment day only)
               </p>
             </div>
-            
+
             <p className="text-sm text-gray-600 mb-4">
               Show this QR code at the hospital reception for quick check-in
             </p>
-            
+
             <div className="flex space-x-4">
-              <button 
+              <button
                 onClick={() => {
                   setShowQRModal(null);
                   setShowNewAppointmentQR(null);
@@ -1898,7 +2722,7 @@ const PatientDashboard: React.FC = () => {
               >
                 Close
               </button>
-              <button 
+              <button
                 onClick={() => downloadQRCode(appointmentToShow)}
                 className="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600"
               >
@@ -1929,7 +2753,7 @@ const PatientDashboard: React.FC = () => {
           <div className="text-6xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Something went wrong</h2>
           <p className="text-gray-600 mb-4">{error}</p>
-          <button 
+          <button
             onClick={() => window.location.reload()}
             className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
           >
@@ -1973,7 +2797,7 @@ const PatientDashboard: React.FC = () => {
                 </div>
                 <span className="text-gray-700">{user.name}</span>
               </div>
-              <button 
+              <button
                 onClick={handleLogout}
                 className="text-red-600 hover:text-red-800 font-semibold"
               >
@@ -1998,11 +2822,10 @@ const PatientDashboard: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center px-4 py-2 rounded-lg font-semibold transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-blue-500 text-white'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
+                className={`flex items-center px-4 py-2 rounded-lg font-semibold transition-colors ${activeTab === tab.id
+                  ? 'bg-blue-500 text-white'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
               >
                 <span className="mr-2">{tab.icon}</span>
                 {tab.label}

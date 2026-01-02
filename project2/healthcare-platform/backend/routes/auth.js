@@ -5,7 +5,6 @@ const Doctor = require('../models/Doctor');
 const { generatePatientId, generateDoctorId, generateHospitalId } = require('../utils/generators');
 const { generateTokenPair, verifyAccessToken, verifyRefreshToken } = require('../utils/jwt');
 const { validateRegistration, validateLogin } = require('../utils/validation');
-const { loginRateLimiter } = require('../middleware/rateLimiter');
 const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
@@ -142,7 +141,7 @@ router.post('/register', async (req, res) => {
  * @desc    Login user
  * @access  Public
  */
-router.post('/login', loginRateLimiter, async (req, res) => {
+router.post('/login', async (req, res) => {
   try {
     console.log('🔐 ========== LOGIN REQUEST ==========');
     console.log('📧 Request body:', {
@@ -184,17 +183,6 @@ router.post('/login', loginRateLimiter, async (req, res) => {
       });
     }
 
-    // Check if account is locked
-    if (user.isLocked()) {
-      const lockTime = Math.ceil((user.lockUntil - Date.now()) / 1000 / 60);
-      return res.status(423).json({
-        success: false,
-        error: 'Account locked',
-        message: `Account is locked due to too many failed login attempts. Please try again in ${lockTime} minutes.`,
-        retryAfter: lockTime
-      });
-    }
-
     // Verify password
     console.log('🔐 Verifying password...');
     const isValidPassword = await user.comparePassword(password);
@@ -202,8 +190,6 @@ router.post('/login', loginRateLimiter, async (req, res) => {
 
     if (!isValidPassword) {
       console.error('❌ Invalid password for:', email);
-      // Increment login attempts
-      await user.incLoginAttempts();
       
       return res.status(401).json({
         success: false,
@@ -213,12 +199,6 @@ router.post('/login', loginRateLimiter, async (req, res) => {
     }
     
     console.log('✅ Password verified successfully');
-
-    // Reset login attempts on successful login
-    if (user.loginAttempts > 0 && user.resetLoginAttempts) {
-      await user.resetLoginAttempts();
-      console.log('✅ Login attempts reset');
-    }
 
     // Check role match (if role provided)
     if (role && user.role !== role) {

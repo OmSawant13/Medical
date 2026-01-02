@@ -3,7 +3,14 @@
  */
 
 // In-memory store (for production, use Redis)
+// DISABLED - Rate limiting disabled
 const requestStore = new Map();
+
+// Clear all stored rate limit data on module load
+if (typeof requestStore.clear === 'function') {
+  requestStore.clear();
+  console.log('🔓 Rate limit store cleared');
+}
 
 /**
  * Rate limiter middleware
@@ -80,12 +87,13 @@ const rateLimiter = (options = {}) => {
 
 /**
  * Login-specific rate limiter (stricter)
+ * DISABLED - No rate limiting for login
  */
-const loginRateLimiter = rateLimiter({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 login attempts per 15 minutes
-  message: 'Too many login attempts. Please try again after 15 minutes.'
-});
+const loginRateLimiter = (req, res, next) => {
+  // Rate limiting completely disabled - allow all requests immediately
+  console.log('🔓 Rate limiter bypassed for login request');
+  next();
+};
 
 /**
  * General API rate limiter

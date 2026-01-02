@@ -7,13 +7,33 @@ const { generateAppointmentId, generateQRCode, generateMeetingLink } = require('
 
 const router = express.Router();
 
+// Add route-level logging to catch ALL requests to this router
+router.use((req, res, next) => {
+    console.log(`🔍 Appointments Router: ${req.method} ${req.path} ${req.originalUrl}`);
+    if (req.path.includes('cancel')) {
+        console.log(`   🚨 CANCEL ROUTE REQUEST: ${req.method} ${req.path}`);
+    }
+    next();
+});
+
 router.use(authenticateToken);
 router.use(validateHIPAA);
+
+// Debug: Log route registration
+console.log('✅ Appointments routes loaded: PUT /:appointmentId/cancel');
+
+// Debug: Log all routes being registered
+console.log('📋 Appointments routes registered:');
+console.log('   POST /');
+console.log('   PUT /:appointmentId/cancel');
+console.log('   GET /');
+console.log('   PUT /:appointmentId/status');
+console.log('   POST /:appointmentId/checkin');
 
 // Create new appointment
 router.post('/', authorizeRoles('patient', 'doctor', 'hospital'), async(req, res) => {
     try {
-        const { patientId, doctorId, appointmentDate, appointmentTime, type, symptoms } = req.body;
+        const { patientId, doctorId, hospitalId, appointmentDate, appointmentTime, type, symptoms } = req.body;
 
         if (!patientId || !doctorId || !appointmentDate || !appointmentTime || !type) {
             return res.status(400).json({
@@ -52,15 +72,42 @@ router.post('/', authorizeRoles('patient', 'doctor', 'hospital'), async(req, res
             appointmentId,
             patientId,
             doctorId,
+            hospitalId: hospitalId || null, // Save hospitalId if provided
             appointmentDate: new Date(appointmentDate),
             appointmentTime,
             type,
             symptoms: symptoms || [],
+            status: 'scheduled', // Explicitly set status to 'scheduled'
             qrCode,
             meetingLink: type === 'video-call' ? meetingLink : undefined
         });
 
         await appointment.save();
+        
+        console.log(`✅ Appointment created: ${appointmentId}`);
+        console.log(`   Patient: ${patientId}`);
+        console.log(`   Doctor: ${doctorId} (${doctor.userId?.name || doctor.name || 'Unknown'})`);
+        console.log(`   Doctor's actual doctorId in DB: ${doctor.doctorId}`);
+        console.log(`   Appointment saved with doctorId: ${appointment.doctorId}`);
+        console.log(`   Date: ${appointmentDate}`);
+        console.log(`   Status: scheduled`);
+        
+        // Verify the appointment was saved correctly
+        const savedAppointment = await Appointment.findOne({ appointmentId });
+        if (savedAppointment) {
+            console.log(`   ✅ Verification: Saved appointment doctorId = ${savedAppointment.doctorId}`);
+        } else {
+            console.log(`   ❌ ERROR: Appointment not found after save!`);
+        }
+
+        // If hospitalId is provided, update doctor's hospitalAffiliation to ensure they appear in that hospital's doctor list
+        if (hospitalId && doctor.hospitalAffiliation !== hospitalId) {
+            await Doctor.updateOne(
+                { doctorId },
+                { $set: { hospitalAffiliation: hospitalId } }
+            );
+            console.log(`✅ Updated doctor ${doctorId} hospitalAffiliation to ${hospitalId}`);
+        }
 
         // Notify via Socket.IO
         if (global.io) {
@@ -107,6 +154,85 @@ router.post('/', authorizeRoles('patient', 'doctor', 'hospital'), async(req, res
     }
 });
 
+// Cancel appointment (patient can cancel their own appointments)
+// IMPORTANT: This route MUST be defined BEFORE the GET / route to avoid route conflicts
+router.put('/:appointmentId/cancel', authorizeRoles('patient', 'doctor', 'hospital'), async(req, res) => {
+    console.log(`🔄 ========== CANCEL ROUTE HIT ==========`);
+    console.log(`   PUT /:appointmentId/cancel - appointmentId: ${req.params.appointmentId}`);
+    try {
+        const { appointmentId } = req.params;
+        const { reason } = req.body;
+        
+        console.log(`🔄 Cancel appointment request: ${appointmentId} by user ${req.user?.email || req.user?._id}`);
+
+        // Find appointment
+        const appointment = await Appointment.findOne({ appointmentId });
+        if (!appointment) {
+            return res.status(404).json({
+                success: false,
+                error: 'Appointment not found'
+            });
+        }
+
+        // Verify authorization - patients can only cancel their own appointments
+        if (req.user.role === 'patient') {
+            const patient = await Patient.findOne({ userId: req.user._id });
+            if (!patient || patient.patientId !== appointment.patientId) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Unauthorized: You can only cancel your own appointments'
+                });
+            }
+        }
+
+        // Check if appointment can be cancelled
+        if (appointment.status === 'completed') {
+            return res.status(400).json({
+                success: false,
+                error: 'Cannot cancel a completed appointment'
+            });
+        }
+
+        if (appointment.status === 'cancelled') {
+            return res.status(400).json({
+                success: false,
+                error: 'Appointment is already cancelled'
+            });
+        }
+
+        // Update appointment status
+        appointment.status = 'cancelled';
+        if (reason) {
+            appointment.notes = (appointment.notes || '') + `\nCancellation reason: ${reason}`;
+        }
+        await appointment.save();
+
+        // Notify doctor via Socket.IO
+        if (global.io) {
+            global.io.to(`doctor_${appointment.doctorId}`).emit('appointment_cancelled', {
+                appointmentId,
+                patientId: appointment.patientId,
+                appointmentDate: appointment.appointmentDate,
+                appointmentTime: appointment.appointmentTime,
+                reason: reason || 'No reason provided'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Appointment cancelled successfully',
+            data: appointment
+        });
+    } catch (error) {
+        console.error('Error cancelling appointment:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to cancel appointment',
+            details: error.message
+        });
+    }
+});
+
 // Get appointments
 router.get('/', authorizeRoles('patient', 'doctor', 'hospital'), async(req, res) => {
     try {
@@ -139,13 +265,36 @@ router.get('/', authorizeRoles('patient', 'doctor', 'hospital'), async(req, res)
         const appointments = await Appointment.find(filters)
             .sort({ appointmentDate: 1, appointmentTime: 1 })
             .limit(Number(limit))
-            .skip(skip);
+            .skip(skip)
+            .lean();
+
+        // Populate doctor and patient details for better frontend display
+        const populatedAppointments = await Promise.all(
+            appointments.map(async (apt) => {
+                const doctor = await Doctor.findOne({ doctorId: apt.doctorId }).populate('userId', 'name email').lean();
+                const patient = await Patient.findOne({ patientId: apt.patientId }).populate('userId', 'name email').lean();
+                
+                return {
+                    ...apt,
+                    doctorName: doctor ? (doctor.userId?.name || doctor.name || 'Doctor') : 'Doctor', // Add doctorName directly for frontend
+                    doctorDetails: doctor ? {
+                        name: doctor.userId?.name || doctor.name || 'Doctor',
+                        specialization: doctor.specialization || [],
+                        consultationFee: doctor.consultationFee || 0
+                    } : null,
+                    patientDetails: patient ? {
+                        name: patient.userId?.name || patient.personalInfo?.name || 'Patient',
+                        phone: patient.personalInfo?.phone || ''
+                    } : null
+                };
+            })
+        );
 
         const total = await Appointment.countDocuments(filters);
 
         res.json({
             success: true,
-            data: appointments,
+            data: populatedAppointments,
             pagination: {
                 total,
                 page: Number(page),

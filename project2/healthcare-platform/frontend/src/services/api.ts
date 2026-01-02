@@ -372,9 +372,35 @@ export const patientAPI = {
     method: 'POST',
     body: JSON.stringify(appointmentData),
   }),
+  cancelAppointment: (appointmentId: string, reason?: string) => apiRequest(`/v1/appointments/${appointmentId}/cancel`, {
+    method: 'PUT',
+    body: JSON.stringify({ reason }),
+  }),
   
   getMedicalHistory: () => apiRequest('/v1/patients/medical-history'),
   getScans: () => apiRequest('/v1/patients/scans'),
+  getPrescriptions: () => apiRequest('/v1/prescriptions/patient'),
+  uploadScan: async (file: File, scanType: string) => {
+    const formData = new FormData();
+    formData.append('scan', file);
+    formData.append('scanType', scanType);
+    
+    const token = getAccessToken();
+    const response = await fetch(`${API_BASE_URL}/v1/patients/scans/upload`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to upload scan');
+    }
+    
+    return response.json();
+  },
   
   getNotifications: () => apiRequest('/v1/patients/notifications'),
   markNotificationRead: (notificationId: string) => apiRequest(`/patient/notifications/${notificationId}/read`, {
@@ -393,8 +419,11 @@ export const patientAPI = {
     return apiRequest(`/v1/hospitals${query ? '?' + query : ''}`);
   },
   
-  getDoctorsByHospital: (hospitalId: string) => 
-    apiRequest(`/v1/hospitals/${hospitalId}/doctors`),
+  getDoctorsByHospital: (hospitalId: string, hospitalName?: string) => {
+    const url = `/v1/hospitals/${hospitalId}/doctors`;
+    const query = hospitalName ? `?hospitalName=${encodeURIComponent(hospitalName)}` : '';
+    return apiRequest(url + query);
+  },
   
   getDoctorDetails: (doctorId: string) => 
     apiRequest(`/v1/doctors/${doctorId}`),
@@ -410,7 +439,12 @@ export const doctorAPI = {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
-  getAppointments: () => apiRequest('/v1/doctors/appointments'),
+  getAppointments: () => apiRequest('/v1/appointments'),
+  updateAppointmentStatus: (appointmentId: string, data: { status: string; notes?: string; diagnosis?: string; prescription?: string[] }) => 
+    apiRequest(`/v1/appointments/${appointmentId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
   updateScanReview: (scanId: string, data: any) => apiRequest(`/v1/doctors/scans/${scanId}/review`, {
     method: 'PUT',
     body: JSON.stringify(data),

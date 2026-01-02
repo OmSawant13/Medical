@@ -500,32 +500,87 @@ router.get('/', authorizeRoles('patient', 'doctor', 'hospital'), async(req, res)
 router.get('/:hospitalId/doctors', authorizeRoles('patient', 'doctor', 'hospital'), async(req, res) => {
     try {
         const { hospitalId } = req.params;
+        const { hospitalName } = req.query; // Accept hospital name from query
 
-        const [hospital, doctors] = await Promise.all([
+        // For Google Places hospitals, they won't be in DB - that's OK
+        const Appointment = require('../models/Appointment');
+        const [hospital, doctors, doctorsWithAppointments] = await Promise.all([
             Hospital.findOne({ hospitalId }).lean(),
             Doctor.find({ hospitalAffiliation: hospitalId })
             .populate('userId', 'name email')
-            .lean()
+            .lean(),
+            // Also get doctors who have appointments with this hospital (even if hospitalAffiliation doesn't match)
+            Appointment.distinct('doctorId', { hospitalId: hospitalId })
+            .then(async (doctorIds) => {
+                if (doctorIds.length === 0) return [];
+                return Doctor.find({ doctorId: { $in: doctorIds } })
+                    .populate('userId', 'name email')
+                    .lean();
+            })
         ]);
 
-        if (!hospital) {
-            return res.status(404).json({
-                success: false,
-                error: 'Hospital not found'
-            });
+        // Get hospital name (from query, DB, or fetch from Google Places)
+        let actualHospitalName = hospitalName || (hospital ? hospital.hospitalName : null);
+        
+        // If it's a Google Places hospital and we don't have the name, fetch it
+        if (!actualHospitalName && hospitalId.startsWith('GP_')) {
+            try {
+                const placeId = hospitalId.replace('GP_', '');
+                const { Client } = require('@googlemaps/google-maps-services-js');
+                const client = new Client({});
+                const placeDetails = await client.placeDetails({
+                    params: {
+                        place_id: placeId,
+                        key: GOOGLE_MAPS_API_KEY,
+                        fields: ['name']
+                    }
+                });
+                actualHospitalName = placeDetails.data.result?.name || 'Hospital';
+            } catch (error) {
+                console.error('Error fetching hospital name from Google Places:', error.message);
+                actualHospitalName = 'Hospital';
+            }
         }
 
-        const doctorList = doctors.length > 0 ?
-            doctors.map(d => formatDoctor(d, hospitalId)) :
-            getMockDoctors(hospitalId);
+        // Return doctors linked to this hospital ID (NEW APPROACH)
+        // Combine doctors with hospitalAffiliation and doctors with appointments
+        const allDoctorIds = new Set();
+        const allDoctors = [];
+        
+        // Add doctors with hospitalAffiliation
+        doctors.forEach(doc => {
+            if (!allDoctorIds.has(doc.doctorId)) {
+                allDoctorIds.add(doc.doctorId);
+                allDoctors.push(doc);
+            }
+        });
+        
+        // Add doctors with appointments (even if hospitalAffiliation doesn't match)
+        doctorsWithAppointments.forEach(doc => {
+            if (!allDoctorIds.has(doc.doctorId)) {
+                allDoctorIds.add(doc.doctorId);
+                allDoctors.push(doc);
+            }
+        });
+        
+        let doctorList;
+        if (allDoctors.length > 0) {
+            // Sort by doctorId to ensure consistent ordering (no shuffling)
+            doctorList = allDoctors
+                .sort((a, b) => (a.doctorId || '').localeCompare(b.doctorId || ''))
+                .map(d => formatDoctor(d, hospitalId));
+        } else {
+            // Assign 3 unassigned doctors to this hospital
+            doctorList = await assignDoctorsToHospital(hospitalId);
+        }
 
         res.json({
             success: true,
             data: {
                 hospital: {
-                    hospitalId: hospital.hospitalId,
-                    hospitalName: hospital.hospitalName,
-                    address: hospital.address
+                    hospitalId: hospitalId,
+                    hospitalName: actualHospitalName || (hospital ? hospital.hospitalName : 'Hospital'),
+                    address: hospital ? hospital.address : {}
                 },
                 doctors: doctorList
             }
@@ -655,6 +710,56 @@ function formatDoctor(doctor, hospitalId) {
             doctor.qualifications : [doctor.qualifications].filter(Boolean),
         hospitalAffiliation: hospitalId
     };
+}
+
+/**
+ * Assign pre-created doctors to a hospital (3 doctors per hospital)
+ * Divides 15 pre-created doctors among hospitals
+ */
+async function assignDoctorsToHospital(hospitalId) {
+    try {
+        // First check if this hospital already has doctors assigned
+        const existingDoctors = await Doctor.find({ hospitalAffiliation: hospitalId })
+            .populate('userId', 'name email')
+            .sort({ doctorId: 1 })
+            .lean();
+        
+        if (existingDoctors.length > 0) {
+            console.log(`✅ Hospital ${hospitalId} already has ${existingDoctors.length} doctors assigned - returning existing doctors`);
+            return existingDoctors.map(d => formatDoctor(d, hospitalId));
+        }
+
+        // Get all unassigned doctors (hospitalAffiliation is null)
+        // Sort by doctorId to ensure consistent ordering (no shuffling)
+        const unassignedDoctors = await Doctor.find({ hospitalAffiliation: null })
+            .populate('userId', 'name email')
+            .sort({ doctorId: 1 }) // Consistent sorting to prevent shuffling
+            .limit(3)
+            .lean();
+
+        if (unassignedDoctors.length === 0) {
+            console.log('⚠️  No unassigned doctors available, all 15 doctors are assigned');
+            console.log('⚠️  This hospital will have no doctors (all doctors are already assigned to other hospitals)');
+            // DO NOT reassign doctors from other hospitals - this prevents shuffling
+            return [];
+        }
+
+        // Assign these 3 doctors to the hospital
+        const assignedDoctors = [];
+        for (const doc of unassignedDoctors) {
+            await Doctor.updateOne(
+                { _id: doc._id },
+                { $set: { hospitalAffiliation: hospitalId } }
+            );
+            assignedDoctors.push(doc);
+            console.log(`✅ Assigned ${doc.userId?.name || doc.name} (${doc.doctorId}) to hospital ${hospitalId}`);
+        }
+
+        return assignedDoctors.map(d => formatDoctor(d, hospitalId));
+    } catch (error) {
+        console.error('❌ Error assigning doctors to hospital:', error.message);
+        return [];
+    }
 }
 
 /**

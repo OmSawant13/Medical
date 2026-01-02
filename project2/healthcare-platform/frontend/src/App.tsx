@@ -4,7 +4,6 @@ import HomePage from './pages/HomePage';
 import Login from './components/Login';
 import PatientDashboard from './pages/PatientDashboard';
 import DoctorDashboard from './pages/DoctorDashboard';
-import HospitalDashboard from './pages/HospitalDashboard';
 import Presentation from './pages/Presentation';
 import FindHospitals from './pages/FindHospitals';
 import HospitalDoctors from './pages/HospitalDoctors';
@@ -25,7 +24,6 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/patient-dashboard" element={<PatientDashboard />} />
           <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
-          <Route path="/hospital-dashboard" element={<HospitalDashboard />} />
           <Route path="/presentation" element={<Presentation />} />
           <Route path="/find-hospitals" element={<FindHospitals />} />
           <Route path="/hospitals/:hospitalId/doctors" element={<HospitalDoctors />} />

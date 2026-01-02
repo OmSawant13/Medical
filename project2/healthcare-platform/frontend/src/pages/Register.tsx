@@ -90,7 +90,8 @@ const Register: React.FC = () => {
               navigate('/doctor-dashboard');
               break;
             case 'hospital':
-              navigate('/hospital-dashboard');
+              // Hospital dashboard not available - redirect to home
+              navigate('/');
               break;
             default:
               navigate('/');

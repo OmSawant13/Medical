@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // Declare Google Maps types for TypeScript
@@ -33,8 +33,6 @@ const FindHospitals: React.FC = () => {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(null);
   const [loading, setLoading] = useState(false);
-  const [placesService, setPlacesService] = useState<any>(null);
-  const [markers, setMarkers] = useState<any[]>([]);
   const [scriptLoaded, setScriptLoaded] = useState(false);
 
   const API_KEY = 'AIzaSyAOVYRIgupAurZup5y1PRh8Ismb1A3lLao'; // Provided API Key
@@ -47,131 +45,27 @@ const FindHospitals: React.FC = () => {
       script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places,geometry&callback=initMap`;
       script.async = true;
       script.defer = true;
-      
+
       window.initMap = () => {
         setScriptLoaded(true);
       };
-      
+
       document.head.appendChild(script);
     } else {
       setScriptLoaded(true);
     }
-    
+
     return () => {
       // Cleanup global callback
-      window.initMap = () => {};
+      window.initMap = () => { };
     };
   }, []);
 
-  useEffect(() => {
-    if (scriptLoaded) {
-      getUserLocation();
-    }
-  }, [scriptLoaded]);
-
-  const getUserLocation = () => {
-    if (navigator.geolocation) {
-      setLoading(true);
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          };
-          setUserLocation(location);
-          initializeMap(location);
-        },
-        (error) => {
-          console.error('Location error:', error);
-          alert('Could not access location. Defaulting to a central location (Mumbai).');
-          // Default to Mumbai
-          const defaultLocation = { lat: 19.0760, lng: 72.8777 };
-          setUserLocation(defaultLocation);
-          initializeMap(defaultLocation);
-        }
-      );
-    } else {
-      alert('Geolocation is not supported by this browser.');
-      const defaultLocation = { lat: 19.0760, lng: 72.8777 };
-      setUserLocation(defaultLocation);
-      initializeMap(defaultLocation);
-    }
-  };
-
-  const initializeMap = (center: { lat: number; lng: number }) => {
-    if (!mapRef.current) return;
-
-    const mapInstance = new window.google.maps.Map(mapRef.current, {
-      center: center,
-      zoom: 15,
-      mapTypeControl: false,
-      fullscreenControl: false,
-      streetViewControl: false
-    });
-
-    // User location marker
-    new window.google.maps.Marker({
-      position: center,
-      map: mapInstance,
-      icon: {
-        path: window.google.maps.SymbolPath.CIRCLE,
-        scale: 10,
-        fillColor: "#4285F4",
-        fillOpacity: 1,
-        strokeWeight: 2,
-        strokeColor: "white",
-      },
-      title: "Your Location"
-    });
-
-    setMap(mapInstance);
-    // Use type assertion to tell TypeScript that PlacesService is available
-    const service = new (window.google.maps.places.PlacesService as any)(mapInstance);
-    setPlacesService(service);
-    
-    searchNearbyHospitals(center, service, mapInstance);
-  };
-
-  const searchNearbyHospitals = (location: { lat: number; lng: number }, service: any, mapInstance: any) => {
-    const request = {
-      location: location,
-      rankBy: window.google.maps.places.RankBy.DISTANCE, // Sort by distance
-      type: 'hospital', // Primary search type
-      keyword: 'clinic' // Also look for clinics
-    };
-
-    service.nearbySearch(request, (results: any[], status: any) => {
-      if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
-        
-        // Calculate precise distance for display
-        const resultsWithDistance = results.map(place => {
-            const placeLoc = place.geometry.location;
-            const distanceInMeters = window.google.maps.geometry.spherical.computeDistanceBetween(
-                new window.google.maps.LatLng(location.lat, location.lng),
-                placeLoc
-            );
-            return { ...place, distance: distanceInMeters / 1000 };
-        });
-
-        // The API with RankBy.DISTANCE already sorts by distance, but we calculate it for display
-        setHospitals(resultsWithDistance);
-        updateMapMarkers(resultsWithDistance, mapInstance);
-      } else {
-        console.error('Places search failed:', status);
-        setLoading(false);
-      }
-      setLoading(false);
-    });
-  };
-
-  const updateMapMarkers = (places: Hospital[], mapInstance: any) => {
-    // Clear existing markers if we had any (though we re-init map mostly)
-    
-    const newMarkers: any[] = [];
+  const updateMapMarkers = useCallback((places: Hospital[], mapInstance: any) => {
     const bounds = new window.google.maps.LatLngBounds();
-    
+
     if (userLocation) {
-        bounds.extend(userLocation);
+      bounds.extend(userLocation);
     }
 
     places.forEach((place) => {
@@ -203,23 +97,120 @@ const FindHospitals: React.FC = () => {
         setSelectedHospital(place);
       });
 
-      newMarkers.push(marker);
       bounds.extend(place.geometry.location);
     });
 
-    setMarkers(newMarkers);
-    // If we have results, fit bounds, otherwise stay at zoom 15
     if (places.length > 0) {
-        mapInstance.fitBounds(bounds);
+      mapInstance.fitBounds(bounds);
     }
-  };
+  }, [userLocation]);
+
+  const searchNearbyHospitals = useCallback((location: { lat: number; lng: number }, service: any, mapInstance: any) => {
+    const request = {
+      location: location,
+      rankBy: window.google.maps.places.RankBy.DISTANCE, // Sort by distance
+      type: 'hospital', // Primary search type
+      keyword: 'clinic' // Also look for clinics
+    };
+
+    service.nearbySearch(request, (results: any[], status: any) => {
+      if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
+
+        // Calculate precise distance for display
+        const resultsWithDistance = results.map(place => {
+          const placeLoc = place.geometry.location;
+          const distanceInMeters = window.google.maps.geometry.spherical.computeDistanceBetween(
+            new window.google.maps.LatLng(location.lat, location.lng),
+            placeLoc
+          );
+          return { ...place, distance: distanceInMeters / 1000 };
+        });
+
+        // The API with RankBy.DISTANCE already sorts by distance, but we calculate it for display
+        setHospitals(resultsWithDistance);
+        updateMapMarkers(resultsWithDistance, mapInstance);
+      } else {
+        console.error('Places search failed:', status);
+        setLoading(false);
+      }
+      setLoading(false);
+    });
+  }, [updateMapMarkers]);
+
+  const initializeMap = useCallback((center: { lat: number; lng: number }) => {
+    if (!mapRef.current) return;
+
+    const mapInstance = new window.google.maps.Map(mapRef.current, {
+      center: center,
+      zoom: 15,
+      mapTypeControl: false,
+      fullscreenControl: false,
+      streetViewControl: false
+    });
+
+    // User location marker
+    new window.google.maps.Marker({
+      position: center,
+      map: mapInstance,
+      icon: {
+        path: window.google.maps.SymbolPath.CIRCLE,
+        scale: 10,
+        fillColor: "#4285F4",
+        fillOpacity: 1,
+        strokeWeight: 2,
+        strokeColor: "white",
+      },
+      title: "Your Location"
+    });
+
+    setMap(mapInstance);
+    // Use type assertion to tell TypeScript that PlacesService is available
+    const service = new (window.google.maps.places.PlacesService as any)(mapInstance);
+
+    searchNearbyHospitals(center, service, mapInstance);
+  }, [searchNearbyHospitals]);
+
+  const getUserLocation = useCallback(() => {
+    if (navigator.geolocation) {
+      setLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          setUserLocation(location);
+          initializeMap(location);
+        },
+        (error) => {
+          console.error('Location error:', error);
+          alert('Could not access location. Defaulting to a central location (Mumbai).');
+          // Default to Mumbai
+          const defaultLocation = { lat: 19.0760, lng: 72.8777 };
+          setUserLocation(defaultLocation);
+          initializeMap(defaultLocation);
+        }
+      );
+    } else {
+      alert('Geolocation is not supported by this browser.');
+      const defaultLocation = { lat: 19.0760, lng: 72.8777 };
+      setUserLocation(defaultLocation);
+      initializeMap(defaultLocation);
+    }
+  }, [initializeMap]);
+
+  useEffect(() => {
+    if (scriptLoaded) {
+      getUserLocation();
+    }
+  }, [scriptLoaded, getUserLocation]);
 
   const handleHospitalClick = (hospital: Hospital) => {
     setSelectedHospital(hospital);
     // Pan map to hospital
     if (map && hospital.geometry.location) {
-        map.panTo(hospital.geometry.location);
-        map.setZoom(17);
+      map.panTo(hospital.geometry.location);
+      map.setZoom(17);
     }
   };
 
@@ -249,14 +240,14 @@ const FindHospitals: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Map Section */}
           <div className="bg-white rounded-lg shadow-lg overflow-hidden h-[600px] relative">
-             <div className="p-4 border-b absolute top-0 left-0 right-0 z-10 bg-white/90 backdrop-blur-sm">
+            <div className="p-4 border-b absolute top-0 left-0 right-0 z-10 bg-white/90 backdrop-blur-sm">
               <h2 className="text-lg font-semibold">📍 Live Map</h2>
             </div>
             <div ref={mapRef} style={{ height: '100%', width: '100%' }} />
             {loading && (
-                 <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-20">
-                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                 </div>
+              <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-20">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              </div>
             )}
           </div>
 
@@ -268,7 +259,7 @@ const FindHospitals: React.FC = () => {
                 {hospitals.length} result{hospitals.length !== 1 ? 's' : ''} found
               </p>
             </div>
-            
+
             <div className="overflow-y-auto flex-1 p-2">
               {loading && hospitals.length === 0 ? (
                 <div className="p-8 text-center">
@@ -286,38 +277,37 @@ const FindHospitals: React.FC = () => {
                     <div
                       key={hospital.place_id}
                       onClick={() => handleHospitalClick(hospital)}
-                      className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                        selectedHospital?.place_id === hospital.place_id
+                      className={`p-4 rounded-lg border cursor-pointer transition-all ${selectedHospital?.place_id === hospital.place_id
                           ? 'bg-blue-50 border-blue-500 shadow-md transform scale-[1.01]'
                           : 'border-gray-200 hover:bg-gray-50 hover:border-blue-300'
-                      }`}
+                        }`}
                     >
                       <div className="flex justify-between items-start">
                         <div>
-                            <h3 className="font-bold text-gray-900">{hospital.name}</h3>
-                            <p className="text-sm text-gray-600 mt-1">{hospital.vicinity}</p>
-                            <div className="flex items-center gap-2 mt-2">
-                                {hospital.rating && (
-                                    <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded flex items-center">
-                                        ⭐ {hospital.rating} ({hospital.user_ratings_total})
-                                    </span>
-                                )}
-                                {hospital.isOpen !== undefined && (
-                                     <span className={`text-xs px-2 py-0.5 rounded ${hospital.isOpen ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                         {hospital.isOpen ? 'Open Now' : 'Closed'}
-                                     </span>
-                                )}
-                            </div>
+                          <h3 className="font-bold text-gray-900">{hospital.name}</h3>
+                          <p className="text-sm text-gray-600 mt-1">{hospital.vicinity}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            {hospital.rating && (
+                              <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded flex items-center">
+                                ⭐ {hospital.rating} ({hospital.user_ratings_total})
+                              </span>
+                            )}
+                            {hospital.isOpen !== undefined && (
+                              <span className={`text-xs px-2 py-0.5 rounded ${hospital.isOpen ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {hospital.isOpen ? 'Open Now' : 'Closed'}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="text-right flex flex-col items-end">
-                             {hospital.distance && (
-                                <span className="text-lg font-bold text-blue-600">
-                                    {hospital.distance.toFixed(1)} km
-                                </span>
-                            )}
-                             <button className="mt-2 text-xs bg-blue-600 text-white px-3 py-1.5 rounded-full hover:bg-blue-700 transition-colors">
-                                View Map
-                            </button>
+                          {hospital.distance && (
+                            <span className="text-lg font-bold text-blue-600">
+                              {hospital.distance.toFixed(1)} km
+                            </span>
+                          )}
+                          <button className="mt-2 text-xs bg-blue-600 text-white px-3 py-1.5 rounded-full hover:bg-blue-700 transition-colors">
+                            View Map
+                          </button>
                         </div>
                       </div>
                     </div>

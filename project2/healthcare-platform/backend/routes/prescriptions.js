@@ -4,10 +4,13 @@ const path = require('path');
 const fs = require('fs');
 const Prescription = require('../models/Prescription');
 const Appointment = require('../models/Appointment');
-const { authorizeRoles } = require('../middleware/auth');
+const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 const { generatePrescriptionId } = require('../utils/generators');
 
 const router = express.Router();
+
+// All prescription routes require authentication
+router.use(authenticateToken);
 
 // Configure multer for prescription image upload
 const storage = multer.diskStorage({
@@ -24,7 +27,7 @@ const storage = multer.diskStorage({
     }
 });
 
-const upload = multer({ 
+const upload = multer({
     storage,
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
     fileFilter: (req, file, cb) => {
@@ -41,6 +44,14 @@ const upload = multer({
 router.post('/', authorizeRoles('doctor'), upload.single('prescriptionImage'), async (req, res) => {
     try {
         const { appointmentId, medicines, diagnosis, notes, followUpDate, prescriptionType } = req.body;
+
+        console.log('📋 Prescription creation request:', {
+            appointmentId,
+            hasDiagnosis: !!diagnosis,
+            hasNotes: !!notes,
+            hasMedicines: !!medicines,
+            hasImage: !!req.file
+        });
 
         if (!appointmentId) {
             return res.status(400).json({
@@ -78,6 +89,14 @@ router.post('/', authorizeRoles('doctor'), upload.single('prescriptionImage'), a
             } catch (e) {
                 medicinesArray = Array.isArray(medicines) ? medicines : [];
             }
+        }
+
+        // Ensure at least some data is provided
+        if (!diagnosis && !notes && medicinesArray.length === 0 && !req.file) {
+            return res.status(400).json({
+                success: false,
+                error: 'At least one of the following is required: diagnosis, notes, medicines, or prescription image'
+            });
         }
 
         const prescriptionData = {
@@ -129,21 +148,41 @@ router.post('/', authorizeRoles('doctor'), upload.single('prescriptionImage'), a
     }
 });
 
-// Patient gets all prescriptions
-router.get('/patient', authorizeRoles('patient'), async (req, res) => {
+// Patient gets all prescriptions (doctors can also access by patientId)
+router.get('/patient', authorizeRoles('patient', 'doctor'), async (req, res) => {
     try {
         const Patient = require('../models/Patient');
-        const patient = await Patient.findOne({ userId: req.user._id });
-        if (!patient) {
-            return res.status(404).json({
+        let patient;
+        let patientId;
+
+        if (req.user.role === 'patient') {
+            // Patients can only access their own prescriptions
+            patient = await Patient.findOne({ userId: req.user._id });
+            if (!patient) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Patient not found'
+                });
+            }
+            patientId = patient.patientId;
+        } else if (req.user.role === 'doctor') {
+            // Doctors can access by patientId query parameter
+            patientId = req.query.patientId;
+            if (!patientId) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'patientId is required for doctors'
+                });
+            }
+        } else {
+            return res.status(403).json({
                 success: false,
-                error: 'Patient not found'
+                error: 'Unauthorized'
             });
         }
 
-        const prescriptions = await Prescription.find({ patientId: patient.patientId })
-            .sort({ createdAt: -1 })
-            .populate('appointmentId', 'appointmentDate appointmentTime');
+        const prescriptions = await Prescription.find({ patientId })
+            .sort({ createdAt: -1 });
 
         res.json({
             success: true,
@@ -191,7 +230,7 @@ router.get('/:prescriptionId/download', authorizeRoles('patient'), async (req, r
         // If image prescription exists
         if (prescription.imagePrescription && prescription.imagePrescription.filePath) {
             const filePath = prescription.imagePrescription.filePath;
-            
+
             if (fs.existsSync(filePath)) {
                 res.download(filePath, prescription.imagePrescription.fileName, (err) => {
                     if (err) {
@@ -242,7 +281,7 @@ router.get('/:prescriptionId', authorizeRoles('patient', 'doctor'), async (req, 
         // Verify authorization
         if (req.user.role === 'patient') {
             const Patient = require('../models/Patient');
-        const patient = await Patient.findOne({ userId: req.user._id });
+            const patient = await Patient.findOne({ userId: req.user._id });
             if (prescription.patientId !== patient.patientId) {
                 return res.status(403).json({
                     success: false,

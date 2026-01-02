@@ -16,13 +16,26 @@ sleep 2
 echo "✅ All processes killed!"
 echo ""
 echo "🚀 Starting Backend..."
-cd "$(dirname "$0")/backend"
+# Get absolute path to project root
+PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
+
+cd "$PROJECT_ROOT/backend"
+# Check if dependencies are installed, if not, install them
+if [ ! -d "node_modules" ]; then
+    echo "📦 Installing backend dependencies..."
+    npm install
+fi
 node server.js &
 
 sleep 3
 
 echo "🚀 Starting Frontend..."
-cd "$(dirname "$0")/frontend"
+cd "$PROJECT_ROOT/frontend"
+# Check if dependencies are installed, if not, install them
+if [ ! -d "node_modules" ]; then
+    echo "📦 Installing frontend dependencies..."
+    npm install
+fi
 npm start &
 
 echo ""
