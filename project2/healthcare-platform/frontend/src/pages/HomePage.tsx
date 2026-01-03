@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { feedbackService } from '../services/firebase';
 
 const HomePage: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeStep, setActiveStep] = useState(0);
   const [feedbackForm, setFeedbackForm] = useState({
     name: '',
     email: '',
@@ -54,6 +55,58 @@ const HomePage: React.FC = () => {
     setMobileMenuOpen(false);
   };
 
+  // CC0 (public domain) Spline scenes used for scroll-story workflow.
+  // Hospital: https://community.spline.design/file/676fa68d-c03f-4aca-ab87-655498e9c652
+  // Clinic room: https://community.spline.design/file/5108354c-284a-4e43-bf85-ca61d0a24b61
+  // 3D Doctor: https://community.spline.design/file/e9ae05b6-6e63-4ca7-bf02-ba185a9ae2fc
+  // Medical dashboard: https://community.spline.design/file/1dc2a571-1d09-4803-ab38-6741f265edf0
+  const storySteps = useMemo(
+    () => [
+      {
+        title: 'Find a hospital near you',
+        subtitle: 'Location-based search + smart filters',
+        splineUrl: 'https://app.spline.design/file/10414c19-18df-48a9-a055-0b32ef8825a4?view=preview'
+      },
+      {
+        title: 'Book & share symptoms',
+        subtitle: 'Appointments + secure medical history',
+        splineUrl: 'https://app.spline.design/file/6fbe6f23-93ad-463d-86a7-9bf30d2a9e9b?view=preview'
+      },
+      {
+        title: 'Doctor consults with full history',
+        subtitle: 'Better decisions with context',
+        splineUrl: 'https://app.spline.design/file/f8491507-029e-4af4-8dee-f5ff76fe963a?view=preview'
+      },
+      {
+        title: 'Get a clean report instantly',
+        subtitle: 'View in-app + download structured PDF',
+        splineUrl: 'https://app.spline.design/file/291aae7c-f32b-4b14-925c-13bb272c8691?view=preview'
+      }
+    ],
+    []
+  );
+
+  const stepRefs = useRef<Array<HTMLDivElement | null>>([]);
+
+  useEffect(() => {
+    const els = stepRefs.current.filter(Boolean) as HTMLDivElement[];
+    if (!els.length) return;
+
+    const observer = new IntersectionObserver(
+      entries => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const idx = Number((entry.target as HTMLElement).dataset.stepIndex);
+          if (!Number.isNaN(idx)) setActiveStep(idx);
+        }
+      },
+      { threshold: 0.6 }
+    );
+
+    els.forEach(el => observer.observe(el));
+    return () => observer.disconnect();
+  }, [storySteps.length]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
@@ -68,6 +121,12 @@ const HomePage: React.FC = () => {
             
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-8">
+              <button 
+                onClick={() => scrollToSection('how-it-works')}
+                className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+              >
+                How it works
+              </button>
               <button 
                 onClick={() => scrollToSection('features')}
                 className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
@@ -122,6 +181,12 @@ const HomePage: React.FC = () => {
             <div className="md:hidden pb-4">
               <div className="flex flex-col space-y-4">
                 <button 
+                  onClick={() => scrollToSection('how-it-works')}
+                  className="text-gray-700 hover:text-blue-600 font-medium text-left"
+                >
+                  How it works
+                </button>
+                <button 
                   onClick={() => scrollToSection('features')}
                   className="text-gray-700 hover:text-blue-600 font-medium text-left"
                 >
@@ -158,68 +223,122 @@ const HomePage: React.FC = () => {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden py-12 sm:py-24">
+      {/* Scroll Story (SonicLamb-style) */}
+      <section id="how-it-works" className="relative overflow-hidden py-12 sm:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-              Revolutionary AI-Powered
-              <span className="text-blue-600"> Medical Analytics</span>
-            </h1>
-            <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
-              Scanlytics transforms healthcare with cutting-edge AI analysis, real-time medical scan processing, 
-              and comprehensive patient management. Experience the future of medical diagnostics.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              <Link
-                to="/login?role=patient"
-                className="bg-blue-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition duration-200 flex items-center justify-center"
-              >
-                👤 Patient Portal
-              </Link>
-              <Link
-                to="/login?role=doctor"
-                className="bg-green-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg text-lg font-semibold hover:bg-green-700 transition duration-200 flex items-center justify-center"
-              >
-                👨‍⚕️ Doctor Portal
-              </Link>
-              <Link
-                to="/login?role=hospital"
-                className="bg-purple-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg text-lg font-semibold hover:bg-purple-700 transition duration-200 flex items-center justify-center"
-              >
-                🏥 Hospital Portal
-              </Link>
-              <Link
-                to="/presentation"
-                className="bg-orange-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg text-lg font-semibold hover:bg-orange-700 transition duration-200 flex items-center justify-center"
-              >
-                🎯 View Presentation
-              </Link>
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-start">
+            {/* Sticky 3D Scene */}
+            <div className="lg:sticky lg:top-24">
+              <div className="bg-white rounded-2xl shadow-2xl border border-white/70 overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">How it works (3D story)</p>
+                    <p className="text-xs text-gray-500">Scroll → scene changes automatically</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {storySteps.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => stepRefs.current[idx]?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                        className={`h-2.5 w-2.5 rounded-full transition-all ${
+                          idx === activeStep ? 'bg-blue-600 w-6' : 'bg-gray-300 hover:bg-gray-400'
+                        }`}
+                        aria-label={`Go to step ${idx + 1}`}
+                        type="button"
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="relative w-full" style={{ aspectRatio: '16 / 10' }}>
+                  <iframe
+                    key={activeStep}
+                    title="3D workflow scene"
+                    src={storySteps[activeStep]?.splineUrl}
+                    loading="lazy"
+                    style={{ border: 0 }}
+                    className="absolute inset-0 w-full h-full"
+                    allow="fullscreen"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4 text-xs text-gray-500">
+                Uses CC0 public-domain scenes from Spline Community.
+              </div>
             </div>
 
-            {/* Live Demo Preview */}
-            <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8 max-w-4xl mx-auto">
-              <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl p-4 sm:p-6 mb-6">
-                <h3 className="text-xl sm:text-2xl font-bold mb-2">🚀 Live Platform Preview</h3>
-                <p className="text-blue-100">Experience real-time AI medical analysis in action</p>
+            {/* Narrative Steps */}
+            <div>
+              <div className="mb-8">
+                <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 leading-tight">
+                  A healthcare platform that
+                  <span className="text-blue-600"> explains itself</span>
+                  <br />
+                  while you scroll
+                </h1>
+                <p className="mt-4 text-lg text-gray-600 max-w-xl">
+                  We’ll show the full workflow: find hospitals → book → consult → get reports. No confusion, no downloads-only experience.
+                </p>
+
+                <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                  <Link
+                    to="/login?role=patient"
+                    className="bg-blue-600 text-white px-6 py-3 rounded-xl text-base font-semibold hover:bg-blue-700 transition duration-200 text-center"
+                  >
+                    👤 Patient Portal
+                  </Link>
+                  <Link
+                    to="/login?role=doctor"
+                    className="bg-green-600 text-white px-6 py-3 rounded-xl text-base font-semibold hover:bg-green-700 transition duration-200 text-center"
+                  >
+                    👨‍⚕️ Doctor Portal
+                  </Link>
+                  <Link
+                    to="/presentation"
+                    className="bg-white text-gray-900 px-6 py-3 rounded-xl text-base font-semibold hover:bg-gray-50 transition duration-200 border border-gray-200 text-center"
+                  >
+                    🎯 View Presentation
+                  </Link>
+                </div>
               </div>
-              
-              <div className="grid sm:grid-cols-3 gap-4 sm:gap-6">
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <div className="text-3xl sm:text-4xl mb-2">⚡</div>
-                  <div className="text-xl sm:text-2xl font-bold text-blue-600">2.3s</div>
-                  <div className="text-sm text-gray-600">Avg Scan Analysis</div>
-                </div>
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <div className="text-3xl sm:text-4xl mb-2">🎯</div>
-                  <div className="text-xl sm:text-2xl font-bold text-green-600">96.8%</div>
-                  <div className="text-sm text-gray-600">AI Accuracy Rate</div>
-                </div>
-                <div className="text-center p-4 bg-purple-50 rounded-lg">
-                  <div className="text-3xl sm:text-4xl mb-2">👥</div>
-                  <div className="text-xl sm:text-2xl font-bold text-purple-600">50K+</div>
-                  <div className="text-sm text-gray-600">Patients Served</div>
-                </div>
+
+              <div className="space-y-6">
+                {storySteps.map((step, idx) => (
+                  <div
+                    key={idx}
+                    data-step-index={idx}
+                    ref={el => {
+                      stepRefs.current[idx] = el;
+                    }}
+                    className={`rounded-2xl border p-6 transition-all ${
+                      idx === activeStep
+                        ? 'border-blue-300 bg-blue-50/60 shadow-sm'
+                        : 'border-gray-200 bg-white hover:bg-gray-50/60'
+                    }`}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div
+                        className={`h-10 w-10 rounded-xl flex items-center justify-center font-bold ${
+                          idx === activeStep ? 'bg-blue-600 text-white' : 'bg-gray-900 text-white'
+                        }`}
+                      >
+                        {idx + 1}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-gray-900">{step.title}</h3>
+                        <p className="text-gray-600 mt-1">{step.subtitle}</p>
+                        <button
+                          type="button"
+                          onClick={() => setActiveStep(idx)}
+                          className="mt-3 text-sm font-semibold text-blue-600 hover:text-blue-700"
+                        >
+                          Preview this scene →
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
