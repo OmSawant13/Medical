@@ -102,7 +102,20 @@ const Register: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Registration error:', error);
-      setError(error.message || 'Registration failed. Please try again.');
+
+      let errorMessage = error.message || 'Registration failed. Please try again.';
+
+      // Append specific validation errors if available
+      if (error.errors && Array.isArray(error.errors) && error.errors.length > 0) {
+        // If the main message is just "Validation failed", replace it or append
+        if (errorMessage === 'Validation failed') {
+          errorMessage = error.errors.join(' ');
+        } else {
+          errorMessage += ': ' + error.errors.join(' ');
+        }
+      }
+
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -313,11 +326,10 @@ const Register: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                  isLoading
+                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${isLoading
                     ? 'bg-gray-400 cursor-not-allowed'
                     : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-                }`}
+                  }`}
               >
                 {isLoading ? (
                   <div className="flex items-center">

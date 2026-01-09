@@ -32,11 +32,12 @@ export class MedicalAIModels {
         // Real AI analysis
         const prediction = this.chestXrayModel.predict(processedImage) as tf.Tensor;
         const results = await prediction.data();
+        const resultsArray = Array.from(results) as number[];
         
         return {
-          confidence: Math.max(...Array.from(results)),
-          findings: this.interpretChestXrayResults(results),
-          recommendations: this.generateChestXrayRecommendations(results)
+          confidence: Math.max(...resultsArray),
+          findings: this.interpretChestXrayResults(new Float32Array(resultsArray)),
+          recommendations: this.generateChestXrayRecommendations(new Float32Array(resultsArray))
         };
       } else {
         // Mock analysis for development
@@ -55,11 +56,12 @@ export class MedicalAIModels {
       if (this.brainMRIModel) {
         const prediction = this.brainMRIModel.predict(processedImage) as tf.Tensor;
         const results = await prediction.data();
+        const resultsArray = Array.from(results) as number[];
         
         return {
-          confidence: Math.max(...Array.from(results)),
-          findings: this.interpretBrainMRIResults(results),
-          recommendations: this.generateBrainMRIRecommendations(results)
+          confidence: Math.max(...resultsArray),
+          findings: this.interpretBrainMRIResults(new Float32Array(resultsArray)),
+          recommendations: this.generateBrainMRIRecommendations(new Float32Array(resultsArray))
         };
       } else {
         return this.getMockBrainMRIAnalysis();
@@ -77,11 +79,12 @@ export class MedicalAIModels {
       if (this.ctScanModel) {
         const prediction = this.ctScanModel.predict(processedImage) as tf.Tensor;
         const results = await prediction.data();
+        const resultsArray = Array.from(results) as number[];
         
         return {
-          confidence: Math.max(...Array.from(results)),
-          findings: this.interpretCTScanResults(results),
-          recommendations: this.generateCTScanRecommendations(results)
+          confidence: Math.max(...resultsArray),
+          findings: this.interpretCTScanResults(new Float32Array(resultsArray)),
+          recommendations: this.generateCTScanRecommendations(new Float32Array(resultsArray))
         };
       } else {
         return this.getMockCTScanAnalysis();

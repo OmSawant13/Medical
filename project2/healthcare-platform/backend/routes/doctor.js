@@ -17,17 +17,17 @@ router.get('/profile', authorizeRoles('doctor'), async (req, res) => {
     const userId = req.user._id || req.user.id || (req.tokenPayload && req.tokenPayload.userId);
     const user = await User.findById(userId).select('-password');
     if (!user) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'User not found' 
+        error: 'User not found'
       });
     }
 
     // Verify this is a doctor
     if (user.role !== 'doctor') {
-      return res.status(403).json({ 
+      return res.status(403).json({
         success: false,
-        error: 'Unauthorized: Not a doctor' 
+        error: 'Unauthorized: Not a doctor'
       });
     }
 
@@ -37,10 +37,10 @@ router.get('/profile', authorizeRoles('doctor'), async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching doctor profile:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Server error',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -55,32 +55,32 @@ router.put('/profile', authorizeRoles('doctor'), async (req, res) => {
       { $set: req.body },
       { new: true }
     ).select('-password');
-    
+
     if (!user) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'User not found' 
+        error: 'User not found'
       });
     }
 
     // Verify this is a doctor
     if (user.role !== 'doctor') {
-      return res.status(403).json({ 
+      return res.status(403).json({
         success: false,
-        error: 'Unauthorized: Not a doctor' 
+        error: 'Unauthorized: Not a doctor'
       });
     }
-    
+
     res.json({
       success: true,
       data: user
     });
   } catch (error) {
     console.error('Error updating doctor profile:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Server error',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -92,16 +92,16 @@ router.get('/pending-scans', authorizeRoles('doctor'), async (req, res) => {
     const userId = req.user._id || req.user.id || (req.tokenPayload && req.tokenPayload.userId);
     const doctor = await Doctor.findOne({ userId });
     if (!doctor) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Doctor profile not found' 
+        error: 'Doctor profile not found'
       });
     }
 
     // Get scans that need doctor review
     // Status should be 'completed' (AI analysis done) or 'processing' (AI in progress)
     // OR scans with doctorReview.requiresDoctorReview = true
-    const scans = await MedicalScan.find({ 
+    const scans = await MedicalScan.find({
       $or: [
         { status: 'completed', 'doctorReview.reviewedBy': { $exists: false } }, // AI done, not reviewed
         { status: 'processing' }, // AI in progress
@@ -112,7 +112,7 @@ router.get('/pending-scans', authorizeRoles('doctor'), async (req, res) => {
       .populate('patientId', 'name roleSpecificId')
       .sort({ createdAt: -1 })
       .limit(50); // Limit to prevent huge responses
-    
+
     // Transform to frontend format
     const transformedScans = scans.map(scan => {
       const patient = scan.patientId;
@@ -122,11 +122,11 @@ router.get('/pending-scans', authorizeRoles('doctor'), async (req, res) => {
         patientName: patient?.name || scan.patientId?.name || 'Patient',
         scanType: scan.scanType,
         date: scan.createdAt,
-        status: scan.status === 'completed' && !scan.doctorReview?.reviewedBy 
-          ? 'pending_review' 
-          : scan.status === 'processing' 
-          ? 'processing' 
-          : 'reviewed',
+        status: scan.status === 'completed' && !scan.doctorReview?.reviewedBy
+          ? 'pending_review'
+          : scan.status === 'processing'
+            ? 'processing'
+            : 'reviewed',
         aiAnalysis: scan.aiAnalysis ? {
           confidence: scan.aiAnalysis.confidence || 0,
           findings: scan.aiAnalysis.findings || [],
@@ -136,17 +136,17 @@ router.get('/pending-scans', authorizeRoles('doctor'), async (req, res) => {
         doctorNotes: scan.doctorReview?.notes || null
       };
     });
-    
+
     res.json({
       success: true,
       data: transformedScans || []
     });
   } catch (error) {
     console.error('Error fetching pending scans:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Server error',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -158,23 +158,23 @@ router.put('/scans/:scanId/review', authorizeRoles('doctor'), async (req, res) =
     const userId = req.user._id || req.user.id || (req.tokenPayload && req.tokenPayload.userId);
     const doctor = await Doctor.findOne({ userId }).populate('userId', 'name email');
     if (!doctor) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Doctor profile not found' 
+        error: 'Doctor profile not found'
       });
     }
 
     // Find scan by scanId (not _id)
     const scan = await MedicalScan.findOne({ scanId: req.params.scanId });
     if (!scan) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Scan not found' 
+        error: 'Scan not found'
       });
     }
 
     const { approved, notes } = req.body;
-    
+
     // Update scan with doctor review
     scan.doctorReview = {
       reviewedBy: doctor.userId._id,
@@ -182,18 +182,18 @@ router.put('/scans/:scanId/review', authorizeRoles('doctor'), async (req, res) =
       approved: approved !== false, // Default to true if not specified
       reviewDate: new Date()
     };
-    
+
     // Update status based on approval
     if (approved !== false) {
       scan.status = 'completed';
     }
-    
+
     await scan.save();
-    
+
     // Populate for response
     await scan.populate('uploadedBy', 'name email');
     await scan.populate('doctorReview.reviewedBy', 'name email');
-    
+
     res.json({
       success: true,
       message: 'Scan reviewed successfully',
@@ -201,10 +201,10 @@ router.put('/scans/:scanId/review', authorizeRoles('doctor'), async (req, res) =
     });
   } catch (error) {
     console.error('Error reviewing scan:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Server error',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -216,9 +216,9 @@ router.get('/patients', authorizeRoles('doctor'), async (req, res) => {
     const userId = req.user._id || req.user.id || (req.tokenPayload && req.tokenPayload.userId);
     const doctor = await Doctor.findOne({ userId });
     if (!doctor) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Doctor profile not found' 
+        error: 'Doctor profile not found'
       });
     }
 
@@ -226,22 +226,22 @@ router.get('/patients', authorizeRoles('doctor'), async (req, res) => {
     const appointments = await Appointment.find({ doctorId: doctor._id })
       .populate('patientId', 'name email phone dateOfBirth')
       .distinct('patientId');
-    
+
     const patients = await User.find({
       _id: { $in: appointments },
       role: 'patient'
     }).select('-password');
-    
+
     res.json({
       success: true,
       data: patients || []
     });
   } catch (error) {
     console.error('Error fetching doctor patients:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Server error',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -254,14 +254,14 @@ router.get('/patient-queue', authorizeRoles('doctor'), async (req, res) => {
     today.setHours(0, 0, 0, 0);
     // Show appointments from today onwards (all future appointments, no upper limit)
     // This ensures doctors can see all their scheduled appointments
-    
+
     // Verify doctor exists and get doctor ID
     const userId = req.user._id || req.user.id || (req.tokenPayload && req.tokenPayload.userId);
     const doctor = await Doctor.findOne({ userId }).populate('userId', 'name email');
     if (!doctor) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Doctor profile not found' 
+        error: 'Doctor profile not found'
       });
     }
 
@@ -301,24 +301,24 @@ router.get('/patient-queue', authorizeRoles('doctor'), async (req, res) => {
     // CRITICAL FIX: Get appointments by userId match instead of doctorId
     // This ensures we find appointments even if doctorId format differs
     // First, get all appointments with matching status
-    const allAppointmentsWithStatus = await Appointment.find({ 
-      status: { $in: ['scheduled', 'confirmed', 'in-progress'] } 
+    const allAppointmentsWithStatus = await Appointment.find({
+      status: { $in: ['scheduled', 'confirmed', 'in-progress'] }
     }).lean();
-    
+
     console.log(`📊 Total appointments with matching status: ${allAppointmentsWithStatus.length}`);
-    
+
     // Filter appointments by matching userId (most reliable method)
     const appointments = [];
     for (const apt of allAppointmentsWithStatus) {
       const aptDoctor = await Doctor.findOne({ doctorId: apt.doctorId })
         .populate('userId', 'name email')
         .lean();
-      
+
       if (aptDoctor) {
         // Match by userId (most reliable) OR by doctorId (if they match)
         const userIdMatch = aptDoctor.userId?._id?.toString() === doctor.userId?._id?.toString();
         const doctorIdMatch = apt.doctorId === doctor.doctorId || aptDoctor.doctorId === doctor.doctorId;
-        
+
         if (userIdMatch || doctorIdMatch) {
           console.log(`✅ Found appointment ${apt.appointmentId} for ${doctor.userId?.name}:`);
           console.log(`   Appointment doctorId: ${apt.doctorId}`);
@@ -330,7 +330,7 @@ router.get('/patient-queue', authorizeRoles('doctor'), async (req, res) => {
         console.log(`⚠️  Appointment ${apt.appointmentId} has doctorId ${apt.doctorId} but doctor not found in DB`);
       }
     }
-    
+
     // Sort by date and time
     appointments.sort((a, b) => {
       const dateA = new Date(a.appointmentDate);
@@ -340,7 +340,7 @@ router.get('/patient-queue', authorizeRoles('doctor'), async (req, res) => {
       }
       return (a.appointmentTime || '').localeCompare(b.appointmentTime || '');
     });
-    
+
     console.log(`📋 Final result: ${appointments.length} appointments for ${doctor.userId?.name} (${doctor.doctorId})`);
 
     // Log final results
@@ -353,19 +353,19 @@ router.get('/patient-queue', authorizeRoles('doctor'), async (req, res) => {
         console.log(`   - ${apt.appointmentId}: ${new Date(apt.appointmentDate).toISOString()} at ${apt.appointmentTime} (${apt.status})`);
       });
     }
-    
+
     // Populate patient details for each appointment
     const populatedAppointments = await Promise.all(
       appointments.map(async (apt) => {
         const patient = await Patient.findOne({ patientId: apt.patientId })
           .populate('userId', 'name email')
           .lean();
-        
+
         return {
           ...apt,
           patientName: patient?.userId?.name || patient?.personalInfo?.name || 'Patient',
           patientPhone: patient?.personalInfo?.phone || '',
-          patientAge: patient?.personalInfo?.dateOfBirth 
+          patientAge: patient?.personalInfo?.dateOfBirth
             ? Math.floor((new Date().getTime() - new Date(patient.personalInfo.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
             : null,
           appointmentTime: apt.appointmentTime,
@@ -375,17 +375,62 @@ router.get('/patient-queue', authorizeRoles('doctor'), async (req, res) => {
         };
       })
     );
-    
+
     res.json({
       success: true,
       data: populatedAppointments || []
     });
   } catch (error) {
     console.error('Error fetching patient queue:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Server error',
-      details: error.message 
+      details: error.message
+    });
+  }
+});
+
+// Get doctor details by doctorId
+router.get('/:doctorId', async (req, res) => {
+  try {
+    const { doctorId } = req.params;
+
+    const doctor = await Doctor.findOne({ doctorId })
+      .populate('userId', 'name email');
+
+    if (!doctor) {
+      return res.status(404).json({
+        success: false,
+        error: 'Doctor not found'
+      });
+    }
+
+    // Return full doctor details
+    res.json({
+      success: true,
+      data: {
+        doctorId: doctor.doctorId,
+        name: doctor.userId?.name || 'Dr. Unknown',
+        email: doctor.userId?.email || '',
+        specialization: Array.isArray(doctor.specialization)
+          ? doctor.specialization
+          : (doctor.specialization ? [doctor.specialization] : []),
+        experience: doctor.experience || 0,
+        consultationFee: doctor.consultationFee || 0,
+        availability: doctor.availability || {},
+        qualifications: Array.isArray(doctor.qualifications)
+          ? doctor.qualifications
+          : (doctor.qualifications ? [doctor.qualifications] : []),
+        licenseNumber: doctor.licenseNumber || '',
+        hospitalAffiliation: doctor.hospitalAffiliation || ''
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching doctor:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch doctor details',
+      details: error.message
     });
   }
 });

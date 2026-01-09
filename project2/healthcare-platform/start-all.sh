@@ -34,6 +34,14 @@ AI_PID=$!
 echo "   AI Service PID: $AI_PID"
 cd ..
 
+# Start Python ML Engine
+echo "🧠 Starting Python ML Engine (port 5002)..."
+cd backend
+python3 app.py > ../logs/ml-engine.log 2>&1 &
+ML_PID=$!
+echo "   ML Engine PID: $ML_PID"
+cd ..
+
 sleep 5
 
 echo ""

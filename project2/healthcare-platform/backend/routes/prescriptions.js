@@ -104,7 +104,9 @@ router.post('/', authorizeRoles('doctor'), upload.single('prescriptionImage'), a
             appointmentId,
             patientId: appointment.patientId,
             doctorId: appointment.doctorId,
-            hospitalId: appointment.hospitalId,
+            hospitalId: appointment.hospitalId || null,
+            diagnosis: diagnosis || '', // Top-level diagnosis for easy access
+            notes: notes || '', // Top-level notes for easy access
             prescriptionType: prescriptionType || (req.file ? 'image' : 'digital'),
             digitalPrescription: {
                 medicines: medicinesArray,
@@ -130,9 +132,24 @@ router.post('/', authorizeRoles('doctor'), upload.single('prescriptionImage'), a
         const prescription = new Prescription(prescriptionData);
         await prescription.save();
 
-        // Update appointment with prescription reference
+        // Update appointment with prescription reference and diagnosis
         appointment.prescription = medicinesArray.map(m => `${m.name} - ${m.dosage}`); // For backward compatibility
+        if (diagnosis) {
+            appointment.diagnosis = diagnosis;
+        }
+        if (notes) {
+            appointment.notes = notes;
+        }
         await appointment.save();
+
+        console.log('✅ Prescription saved:', {
+            prescriptionId: prescription.prescriptionId,
+            appointmentId: prescription.appointmentId,
+            patientId: prescription.patientId,
+            hasDiagnosis: !!prescription.diagnosis,
+            hasMedicines: prescription.digitalPrescription?.medicines?.length > 0,
+            hasImage: !!prescription.imagePrescription
+        });
 
         res.status(201).json({
             success: true,

@@ -31,9 +31,15 @@ console.log('   PUT /:appointmentId/status');
 console.log('   POST /:appointmentId/checkin');
 
 // Create new appointment
-router.post('/', authorizeRoles('patient', 'doctor', 'hospital'), async(req, res) => {
+router.post('/', authorizeRoles('patient', 'doctor', 'hospital'), async (req, res) => {
     try {
-        const { patientId, doctorId, hospitalId, appointmentDate, appointmentTime, type, symptoms } = req.body;
+        let { patientId, doctorId, hospitalId, appointmentDate, appointmentTime, type, symptoms } = req.body;
+
+        // Auto-fill patientId from authenticated user if not provided
+        if (!patientId && req.user.role === 'patient' && req.patientId) {
+            patientId = req.patientId;
+            console.log(`ℹ️  Auto-filled patientId from auth token: ${patientId}`);
+        }
 
         if (!patientId || !doctorId || !appointmentDate || !appointmentTime || !type) {
             return res.status(400).json({
@@ -42,7 +48,7 @@ router.post('/', authorizeRoles('patient', 'doctor', 'hospital'), async(req, res
             });
         }
 
-        // Verify patient and doctor exist
+        // Verify patient and doctor exist (using string IDs, not ObjectIds)
         const [patient, doctor] = await Promise.all([
             Patient.findOne({ patientId }),
             Doctor.findOne({ doctorId })
@@ -70,20 +76,20 @@ router.post('/', authorizeRoles('patient', 'doctor', 'hospital'), async(req, res
 
         const appointment = new Appointment({
             appointmentId,
-            patientId,
-            doctorId,
-            hospitalId: hospitalId || null, // Save hospitalId if provided
+            patientId: String(patientId), // Ensure it's a string
+            doctorId: String(doctorId), // Ensure it's a string
+            hospitalId: hospitalId ? String(hospitalId) : undefined, // Save hospitalId as string if provided (can be Google Places ID)
             appointmentDate: new Date(appointmentDate),
             appointmentTime,
             type,
-            symptoms: symptoms || [],
-            status: 'scheduled', // Explicitly set status to 'scheduled'
+            symptoms: Array.isArray(symptoms) ? symptoms : (symptoms ? [symptoms] : []),
+            status: 'scheduled', // Use 'scheduled' status (now in enum)
             qrCode,
             meetingLink: type === 'video-call' ? meetingLink : undefined
         });
 
         await appointment.save();
-        
+
         console.log(`✅ Appointment created: ${appointmentId}`);
         console.log(`   Patient: ${patientId}`);
         console.log(`   Doctor: ${doctorId} (${doctor.userId?.name || doctor.name || 'Unknown'})`);
@@ -91,7 +97,7 @@ router.post('/', authorizeRoles('patient', 'doctor', 'hospital'), async(req, res
         console.log(`   Appointment saved with doctorId: ${appointment.doctorId}`);
         console.log(`   Date: ${appointmentDate}`);
         console.log(`   Status: scheduled`);
-        
+
         // Verify the appointment was saved correctly
         const savedAppointment = await Appointment.findOne({ appointmentId });
         if (savedAppointment) {
@@ -156,13 +162,13 @@ router.post('/', authorizeRoles('patient', 'doctor', 'hospital'), async(req, res
 
 // Cancel appointment (patient can cancel their own appointments)
 // IMPORTANT: This route MUST be defined BEFORE the GET / route to avoid route conflicts
-router.put('/:appointmentId/cancel', authorizeRoles('patient', 'doctor', 'hospital'), async(req, res) => {
+router.put('/:appointmentId/cancel', authorizeRoles('patient', 'doctor', 'hospital'), async (req, res) => {
     console.log(`🔄 ========== CANCEL ROUTE HIT ==========`);
     console.log(`   PUT /:appointmentId/cancel - appointmentId: ${req.params.appointmentId}`);
     try {
         const { appointmentId } = req.params;
         const { reason } = req.body;
-        
+
         console.log(`🔄 Cancel appointment request: ${appointmentId} by user ${req.user?.email || req.user?._id}`);
 
         // Find appointment
@@ -234,7 +240,7 @@ router.put('/:appointmentId/cancel', authorizeRoles('patient', 'doctor', 'hospit
 });
 
 // Get appointments
-router.get('/', authorizeRoles('patient', 'doctor', 'hospital'), async(req, res) => {
+router.get('/', authorizeRoles('patient', 'doctor', 'hospital'), async (req, res) => {
     try {
         const { patientId, doctorId, status, date, limit = 50, page = 1 } = req.query;
 
@@ -273,7 +279,7 @@ router.get('/', authorizeRoles('patient', 'doctor', 'hospital'), async(req, res)
             appointments.map(async (apt) => {
                 const doctor = await Doctor.findOne({ doctorId: apt.doctorId }).populate('userId', 'name email').lean();
                 const patient = await Patient.findOne({ patientId: apt.patientId }).populate('userId', 'name email').lean();
-                
+
                 return {
                     ...apt,
                     doctorName: doctor ? (doctor.userId?.name || doctor.name || 'Doctor') : 'Doctor', // Add doctorName directly for frontend
@@ -312,7 +318,7 @@ router.get('/', authorizeRoles('patient', 'doctor', 'hospital'), async(req, res)
 });
 
 // Update appointment status
-router.put('/:appointmentId/status', authorizeRoles('doctor', 'hospital'), async(req, res) => {
+router.put('/:appointmentId/status', authorizeRoles('doctor', 'hospital'), async (req, res) => {
     try {
         const { appointmentId } = req.params;
         const { status, notes, diagnosis, prescription } = req.body;
@@ -366,7 +372,7 @@ router.put('/:appointmentId/status', authorizeRoles('doctor', 'hospital'), async
 });
 
 // Patient check-in
-router.post('/:appointmentId/checkin', authorizeRoles('patient', 'hospital'), async(req, res) => {
+router.post('/:appointmentId/checkin', authorizeRoles('patient', 'hospital'), async (req, res) => {
     try {
         const { appointmentId } = req.params;
 
@@ -405,7 +411,7 @@ router.post('/:appointmentId/checkin', authorizeRoles('patient', 'hospital'), as
 });
 
 // Get appointment analytics
-router.get('/analytics', authorizeRoles('doctor', 'hospital'), async(req, res) => {
+router.get('/analytics', authorizeRoles('doctor', 'hospital'), async (req, res) => {
     try {
         const analytics = await Appointment.aggregate([{
             $group: {

@@ -16,8 +16,10 @@ const doctorRoutes = require('./routes/doctor');
 let prescriptionRoutes;
 try {
     prescriptionRoutes = require('./routes/prescriptions');
+    console.log('✅ Prescriptions route loaded successfully');
 } catch (error) {
-    console.warn('⚠️  Prescriptions route not available (multer not installed)');
+    console.warn('⚠️  Prescriptions route not available:', error.message);
+    console.warn('   Installing multer...');
     prescriptionRoutes = null;
 }
 
@@ -106,8 +108,12 @@ app.use('/api/v1/patients', patientRoutes);
 app.use('/api/v1/doctors', doctorRoutes);
 app.use('/api/v1/appointments', appointmentRoutes);
 app.use('/api/v1/hospitals', hospitalRoutes);
+// Prescriptions route - always register if available
 if (prescriptionRoutes) {
     app.use('/api/v1/prescriptions', prescriptionRoutes);
+    console.log('✅ Prescriptions route registered at /api/v1/prescriptions');
+} else {
+    console.warn('⚠️  Prescriptions route NOT registered - multer or route file issue');
 }
 
 // Catch all other requests

@@ -423,66 +423,6 @@ router.get('/', authorizeRoles('patient', 'doctor', 'hospital'), async(req, res)
             error: 'Please provide either latitude/longitude or city name'
         });
 
-        const lat = parseFloat(latitude);
-        const lon = parseFloat(longitude);
-        const radiusMeters = radius ? parseFloat(radius) * 1000 : DEFAULT_RADIUS;
-        const filterOpenNow = openNow === 'true';
-
-        if (isNaN(lat) || isNaN(lon)) {
-            return res.status(400).json({
-                success: false,
-                error: 'Invalid latitude or longitude'
-            });
-        }
-
-        const userLatLng = { lat, lng: lon };
-
-        // Fetch hospitals using EXACT hos logic
-        let items = await fetchHospitalsAndClinics({
-            userLatLng,
-            radiusMeters,
-            openNow: filterOpenNow
-        });
-
-        // Apply search filter if provided
-        if (search && items.length > 0) {
-            const term = search.toLowerCase();
-            items = items.filter(item => {
-                const name = (item.name || '').toLowerCase();
-                const addr = (item.address || '').toLowerCase();
-                return name.includes(term) || addr.includes(term);
-            });
-        }
-
-        // Format for frontend (keep existing format)
-        const hospitals = items.map(item => ({
-            hospitalId: `GP_${item.placeId}`,
-            hospitalName: item.name,
-            address: {
-                fullAddress: item.address,
-                street: item.address.split(',')[0] || '',
-                city: item.address.split(',')[1] || '',
-                state: item.address.split(',')[2] || '',
-                country: 'India'
-            },
-            location: {
-                latitude: item.latLng.lat,
-                longitude: item.latLng.lng
-            },
-            rating: item.rating,
-            user_ratings_total: item.ratingCount,
-            isOpen: item.openNow,
-            distance: parseFloat((item.distanceM / 1000).toFixed(2)), // km
-            distanceM: item.distanceM, // meters
-            placeId: item.placeId
-        }));
-
-        res.json({
-            success: true,
-            count: hospitals.length,
-            data: hospitals
-        });
-
     } catch (error) {
         console.error('Hospital search error:', error);
         res.status(500).json({
@@ -504,12 +444,18 @@ router.get('/:hospitalId/doctors', authorizeRoles('patient', 'doctor', 'hospital
 
         // For Google Places hospitals, they won't be in DB - that's OK
         const Appointment = require('../models/Appointment');
+        
+        // Check if this is a Google Places ID (starts with GP_)
+        const isGooglePlacesHospital = hospitalId.startsWith('GP_');
+        
         const [hospital, doctors, doctorsWithAppointments] = await Promise.all([
             Hospital.findOne({ hospitalId }).lean(),
             Doctor.find({ hospitalAffiliation: hospitalId })
             .populate('userId', 'name email')
             .lean(),
-            // Also get doctors who have appointments with this hospital (even if hospitalAffiliation doesn't match)
+            // Only query appointments if it's NOT a Google Places hospital
+            // (Google Places hospitals won't have appointments with that ID in DB)
+            isGooglePlacesHospital ? Promise.resolve([]) :
             Appointment.distinct('doctorId', { hospitalId: hospitalId })
             .then(async (doctorIds) => {
                 if (doctorIds.length === 0) return [];

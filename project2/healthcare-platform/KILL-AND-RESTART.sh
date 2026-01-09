@@ -27,6 +27,10 @@ if [ ! -d "node_modules" ]; then
 fi
 node server.js &
 
+echo "🐍 Starting Python ML Engine..."
+source "$PROJECT_ROOT/backend/ml_engine/venv/bin/activate"
+python "$PROJECT_ROOT/backend/app.py" &
+
 sleep 3
 
 echo "🚀 Starting Frontend..."

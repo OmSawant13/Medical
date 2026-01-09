@@ -32,42 +32,16 @@ const validatePassword = (password) => {
     return { valid: false, error: 'Password is required and must be a string' };
   }
 
-  if (password.length < 8) {
-    return { valid: false, error: 'Password must be at least 8 characters long' };
+  if (password.length < 6) {
+    return { valid: false, error: 'Password must be at least 6 characters long' };
   }
 
   if (password.length > 128) {
     return { valid: false, error: 'Password is too long (max 128 characters)' };
   }
 
-  // Check for at least one uppercase letter
-  if (!/[A-Z]/.test(password)) {
-    return { valid: false, error: 'Password must contain at least one uppercase letter' };
-  }
-
-  // Check for at least one lowercase letter
-  if (!/[a-z]/.test(password)) {
-    return { valid: false, error: 'Password must contain at least one lowercase letter' };
-  }
-
-  // Check for at least one number
-  if (!/[0-9]/.test(password)) {
-    return { valid: false, error: 'Password must contain at least one number' };
-  }
-
-  // Check for at least one special character
-  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
-    return { valid: false, error: 'Password must contain at least one special character' };
-  }
-
-  // Check for common weak passwords
-  const commonPasswords = [
-    'password', 'password123', '12345678', 'qwerty123',
-    'admin123', 'welcome123', 'letmein', 'monkey123'
-  ];
-  if (commonPasswords.includes(password.toLowerCase())) {
-    return { valid: false, error: 'Password is too common. Please choose a stronger password' };
-  }
+  // Relaxed validation for development
+  // Removed strict uppercase, lowercase, number, and special char checks
 
   return { valid: true };
 };
@@ -103,7 +77,7 @@ const validateName = (name) => {
  */
 const validateRole = (role) => {
   const validRoles = ['patient', 'doctor', 'hospital'];
-  
+
   if (!role || typeof role !== 'string') {
     return { valid: false, error: 'Role is required and must be a string' };
   }

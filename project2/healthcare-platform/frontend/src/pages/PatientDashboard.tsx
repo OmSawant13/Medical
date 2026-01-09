@@ -3,7 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import QRCode from 'react-qr-code';
 import { patientAPI, authAPI } from '../services/api';
 import { generateMedicalReportPDF, generateMedicalReportPDFBlobUrl } from '../utils/pdfGenerator';
-// Map removed - using list view only
+import DashboardLayout from '../components/layout/DashboardLayout';
+import StatCard from '../components/dashboard/StatCard';
+import AppointmentCard from '../components/dashboard/AppointmentCard';
+import ScanCard from '../components/dashboard/ScanCard';
 
 interface MedicalScan {
   _id: string;
@@ -907,6 +910,7 @@ const PatientDashboard: React.FC = () => {
 
   // Start booking flow
   const startBooking = () => {
+    setActiveTab('appointments');
     setShowBookingForm(true);
     setBookingStep(1);
     getUserLocation();
@@ -1095,186 +1099,138 @@ const PatientDashboard: React.FC = () => {
     }
   };
 
+  /* New Render Overview with Bento Grid Layout */
   const renderOverview = () => (
-    <div className="space-y-6">
-      {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl p-6">
-        <h2 className="text-2xl font-bold mb-2">Welcome back, {user?.name || 'Patient'}!</h2>
-        <p className="text-blue-100">Here's your health overview for today</p>
+    <div className="space-y-8">
+      {/* Welcome Hero - Compact & Premium */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-primary-700 to-primary-900 rounded-2xl p-8 shadow-lg text-white">
+        <div className="relative z-10 max-w-2xl">
+          <h2 className="text-3xl font-bold mb-2 tracking-tight">Welcome back, {user?.name?.split(' ')[0]}! 👋</h2>
+          <p className="text-primary-100/90 text-lg font-light leading-relaxed">
+            You have <strong className="text-white font-semibold">{appointments.filter(a => a.status === 'scheduled').length} upcoming appointments</strong> and your latest health report is ready.
+          </p>
+          <div className="mt-6 flex space-x-3">
+            <button onClick={() => startBooking()} className="bg-white text-primary-700 px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary-50 transition-colors shadow-sm">
+              Book Appointment
+            </button>
+            <button onClick={() => setActiveTab('medical-history')} className="px-5 py-2.5 rounded-xl font-semibold text-sm bg-primary-800/50 hover:bg-primary-800 transition-colors border border-primary-600/30">
+              View History
+            </button>
+          </div>
+        </div>
+
+        {/* Abstract Background Shapes */}
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 right-20 w-32 h-32 bg-teal-400/20 rounded-full blur-2xl"></div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-green-500">
-          <div className="flex items-center">
-            <div className="text-3xl text-green-500 mr-4">🩺</div>
-            <div>
-              <p className="text-sm text-gray-600">Total Scans</p>
-              <p className="text-2xl font-bold text-gray-900">{scans.length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-blue-500">
-          <div className="flex items-center">
-            <div className="text-3xl text-blue-500 mr-4">📅</div>
-            <div>
-              <p className="text-sm text-gray-600">Appointments</p>
-              <p className="text-2xl font-bold text-gray-900">{appointments.length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-yellow-500">
-          <div className="flex items-center">
-            <div className="text-3xl text-yellow-500 mr-4">🔔</div>
-            <div>
-              <p className="text-sm text-gray-600">Notifications</p>
-              <p className="text-2xl font-bold text-gray-900">{notifications.filter(n => n.unread).length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-purple-500">
-          <div className="flex items-center">
-            <div className="text-3xl text-purple-500 mr-4">🏥</div>
-            <div>
-              <p className="text-sm text-gray-600">Patient ID</p>
-              <p className="text-lg font-bold text-gray-900">{user?.roleSpecificId || 'Loading...'}</p>
-            </div>
-          </div>
-        </div>
+      {/* Stats Grid - Using Reusable Components */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          label="Medical Scans"
+          value={scans.length.toString()}
+          icon="🩺"
+          color="blue"
+          onClick={() => setActiveTab('medical-history')}
+        />
+        <StatCard
+          label="Upcoming Visits"
+          value={appointments.filter(a => a.status === 'scheduled').length.toString()}
+          icon="📅"
+          color="purple"
+          onClick={() => setActiveTab('appointments')}
+        />
+        <StatCard
+          label="New Notifications"
+          value={notifications.filter(n => n.unread).length.toString()}
+          icon="🔔"
+          color="yellow"
+          onClick={() => setActiveTab('notifications')}
+        />
+        <StatCard
+          label="Health Score"
+          value="98%"
+          icon="❤️"
+          color="teal"
+          trend="2%"
+          trendUp={true}
+        />
       </div>
 
-      {/* Recent Activity */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Recent Scans */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">Recent Medical Scans</h3>
-          {scans.length > 0 ? (
-            <div className="space-y-4">
-              {scans.slice(0, 3).map(scan => (
-                <div key={scan._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <h4 className="font-semibold text-gray-900">{scan.scanType}</h4>
-                    <p className="text-sm text-gray-600">{new Date(scan.uploadDate).toLocaleDateString()}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${scan.status === 'doctor_reviewed' ? 'bg-green-100 text-green-800' :
-                      scan.status === 'analysis_complete' ? 'bg-blue-100 text-blue-800' :
-                        scan.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                      }`}>
-                      {scan.status.replace('_', ' ')}
-                    </span>
-                    {scan.aiResults && (
-                      <p className="text-sm text-gray-600 mt-1">
-                        AI Confidence: {(scan.aiResults.confidence * 100).toFixed(1)}%
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500 text-center py-4">No medical scans yet</p>
-          )}
-        </div>
+      {/* Main Content Split: Recent Scans & Upcoming Appointments */}
+      <div className="grid lg:grid-cols-3 gap-8">
+        {/* Left Col (2/3): Appointments */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-bold text-gray-800 tracking-tight">Upcoming Appointments</h3>
+            <button onClick={() => setActiveTab('appointments')} className="text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors">
+              View All
+            </button>
+          </div>
 
-        {/* Upcoming Appointments */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">Upcoming Appointments</h3>
           {appointments.filter(apt => apt.status !== 'completed').length > 0 ? (
             <div className="space-y-4">
-              {appointments.filter(apt => apt.status !== 'completed').slice(0, 3).map(appointment => (
-                <div key={appointment._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <h4 className="font-semibold text-gray-900">{appointment.doctorName}</h4>
-                    <p className="text-sm text-gray-600">{appointment.type}</p>
-                    <p className="text-sm text-gray-600">
-                      {new Date(appointment.date).toLocaleDateString()} at {appointment.time}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${appointment.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                      'bg-blue-100 text-blue-800'
-                      }`}>
-                      {appointment.status}
-                    </span>
-                    <div className="mt-2 space-x-2">
-                      {appointment.meetingLink && (
-                        <button
-                          onClick={() => joinVideoCall(appointment)}
-                          className="text-xs text-green-600 hover:text-green-800 bg-green-100 px-2 py-1 rounded"
-                        >
-                          📹 Join Call
-                        </button>
-                      )}
-                      <button
-                        onClick={() => showQRCode(appointment)}
-                        className="text-xs text-blue-600 hover:text-blue-800 bg-blue-100 px-2 py-1 rounded"
-                      >
-                        📱 QR Code
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+              {appointments
+                .filter(apt => apt.status !== 'completed')
+                .slice(0, 3)
+                .map(apt => (
+                  <AppointmentCard
+                    key={apt._id}
+                    doctorName={apt.doctorName}
+                    specialty="General Medicine" // Placeholder
+                    date={apt.date}
+                    time={apt.time}
+                    type={apt.type}
+                    status={apt.status}
+                    meetingLink={apt.meetingLink}
+                    onJoinCheck={() => joinVideoCall(apt)}
+                    onQrCode={() => showQRCode(apt)}
+                  />
+                ))}
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-4">No upcoming appointments</p>
+            <div className="bg-surface-50 rounded-2xl p-8 text-center border border-dashed border-gray-200 hover:border-medical-300 transition-colors">
+              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-3xl mx-auto mb-3 shadow-sm text-gray-400">📅</div>
+              <p className="text-gray-600 font-medium">No upcoming appointments</p>
+              <button onClick={() => startBooking()} className="mt-4 text-sm font-semibold text-medical-600 hover:text-medical-700">
+                + Book Now
+              </button>
+            </div>
           )}
         </div>
-      </div>
 
-      {/* Quick Actions */}
-      <div className="grid md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow-lg p-6 text-center border-2 border-blue-200 hover:border-blue-400 transition-all">
-          <div className="text-4xl mb-4">🏥</div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Find Hospitals</h3>
-          <p className="text-gray-600 mb-4">Find nearby hospitals and book appointments</p>
-          <button
-            onClick={() => navigate('/find-hospitals')}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 w-full font-medium"
-          >
-            Find Hospitals →
-          </button>
-        </div>
+        {/* Right Col (1/3): Recent Scans */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-bold text-gray-800 tracking-tight">Recent Scans</h3>
+            <button onClick={() => setActiveTab('medical-history')} className="text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors">
+              View All
+            </button>
+          </div>
 
-        <div className="bg-white rounded-lg shadow-lg p-6 text-center">
-          <div className="text-4xl mb-4">📝</div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Add Medical Notes</h3>
-          <p className="text-gray-600 mb-4">Document symptoms or health concerns</p>
-          <button
-            onClick={addMedicalNotes}
-            className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
-          >
-            Add Notes
-          </button>
-        </div>
+          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm space-y-2">
+            {scans.length > 0 ? (
+              scans.slice(0, 4).map(scan => (
+                <ScanCard
+                  key={scan._id}
+                  type={scan.scanType}
+                  date={scan.uploadDate}
+                  status={scan.status}
+                  confidence={scan.aiResults?.confidence}
+                  onClick={() => setActiveTab('medical-history')}
+                />
+              ))
+            ) : (
+              <div className="text-center py-8 bg-surface-50 rounded-xl mx-2">
+                <div className="text-2xl mb-2 grayscale opacity-50">📂</div>
+                <p className="text-gray-400 text-sm font-medium">No medical scans found</p>
+              </div>
+            )}
 
-        <div className="bg-white rounded-lg shadow-lg p-6 text-center">
-          <div className="text-4xl mb-4">📊</div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Health Metrics</h3>
-          <p className="text-gray-600 mb-4">View your health statistics and trends</p>
-          <button
-            onClick={viewPerformanceMetrics}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
-          >
-            View Metrics
-          </button>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-lg p-6 text-center">
-          <div className="text-4xl mb-4">📱</div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Generate Report</h3>
-          <p className="text-gray-600 mb-4">Create comprehensive health summary</p>
-          <button
-            onClick={generateHealthReport}
-            className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600"
-          >
-            Generate
-          </button>
+            <button className="w-full py-3 mt-2 border-t border-gray-100 text-sm font-semibold text-gray-500 hover:text-primary-600 transition-colors">
+              + Upload New Scan
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1299,6 +1255,7 @@ const PatientDashboard: React.FC = () => {
       refreshPrescriptions();
     }
   }, [activeTab]);
+
 
   const renderMedicalHistory = () => {
     const completedAppointments = appointments.filter(apt => apt.status === 'completed');
@@ -2021,6 +1978,7 @@ const PatientDashboard: React.FC = () => {
                 >
                   📅 Confirm & Book Appointment
                 </button>
+
               </div>
             )}
           </div>
@@ -2074,24 +2032,29 @@ const PatientDashboard: React.FC = () => {
 
           if (filteredAppointments.length === 0) {
             return (
-              <div className="text-center py-12">
-                <div className="text-6xl mb-4">
-                  {appointmentFilter === 'completed' ? '✅' : appointmentFilter === 'upcoming' ? '📅' : '📋'}
+              <div className="text-center py-16 bg-surface-50 rounded-2xl border border-dashed border-slate-200">
+                <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-4xl mx-auto mb-4 shadow-soft">
+                  {appointmentFilter === 'completed' ? '✅' : appointmentFilter === 'upcoming' ? '🗓️' : '📋'}
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                <h3 className="text-lg font-bold text-gray-900 mb-1">
                   {appointmentFilter === 'completed'
-                    ? 'No Completed Appointments'
+                    ? 'No Past Visits'
                     : appointmentFilter === 'upcoming'
-                      ? 'No Upcoming Appointments'
-                      : 'No Appointments Yet'}
+                      ? 'No Upcoming Visits'
+                      : 'No Appointments Found'}
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-gray-500 max-w-xs mx-auto mb-6">
                   {appointmentFilter === 'completed'
-                    ? 'Your completed appointments will appear here.'
+                    ? 'Your medical history for completed visits will appear here.'
                     : appointmentFilter === 'upcoming'
-                      ? 'Book an appointment to get started.'
-                      : 'Book your first appointment to get started.'}
+                      ? 'Schedule a consultation with one of our specialists.'
+                      : 'Get started by booking your first appointment.'}
                 </p>
+                {appointmentFilter !== 'completed' && (
+                  <button onClick={() => startBooking()} className="bg-medical-600 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-medical-700 shadow-lg shadow-medical-500/20 transition-all">
+                    Book Appointment
+                  </button>
+                )}
               </div>
             );
           }
@@ -2376,15 +2339,16 @@ const PatientDashboard: React.FC = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">🔔</div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Notifications</h3>
-            <p className="text-gray-600">You're all caught up! Notifications will appear here.</p>
+          <div className="text-center py-16 bg-surface-50 rounded-2xl border border-dashed border-slate-200">
+            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-4xl mx-auto mb-4 shadow-soft">🔔</div>
+            <h3 className="text-lg font-bold text-gray-900 mb-1">All Caught Up!</h3>
+            <p className="text-gray-500">You have no new notifications at the moment.</p>
           </div>
         )}
       </div>
     </div>
   );
+
 
   const renderSettings = () => (
     <div className="space-y-6">
@@ -2769,90 +2733,52 @@ const PatientDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <Link to="/" className="text-2xl font-bold text-blue-600 mr-8">
-                🏥 Healthcare AI
-              </Link>
-              <h1 className="text-xl font-semibold text-gray-900">Patient Portal</h1>
+    <>
+      <DashboardLayout
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        user={user}
+        notifications={notifications}
+        logout={handleLogout}
+      >
+        {activeTab === 'overview' && renderOverview()}
+        {activeTab === 'medical-history' && renderMedicalHistory()}
+        {activeTab === 'appointments' && renderAppointments()}
+        {activeTab === 'notifications' && renderNotifications()}
+        {activeTab === 'settings' && renderSettings()}
+      </DashboardLayout>
+
+      {/* Global Modals */}
+      <QRCodeModal />
+
+      {showNewAppointmentQR && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-fade-in-up text-center relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-2 bg-green-500"></div>
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">✅</div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">Booking Confirmed!</h3>
+            <p className="text-gray-500 mb-6">Here is your appointment QR code.</p>
+
+            <div className="bg-white p-4 rounded-xl border-2 border-dashed border-gray-200 inline-block mb-6">
+              <QRCode
+                value={JSON.stringify({
+                  appointmentId: showNewAppointmentQR._id,
+                  patientId: user?._id || user?.patientId || user?.roleSpecificId
+                })}
+                size={180}
+                level="H"
+              />
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <button className="relative text-gray-600 hover:text-gray-900">
-                  🔔
-                  {notifications.filter(n => n.unread).length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {notifications.filter(n => n.unread).length}
-                    </span>
-                  )}
-                </button>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
-                  {user.name?.charAt(0) || 'P'}
-                </div>
-                <span className="text-gray-700">{user.name}</span>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="text-red-600 hover:text-red-800 font-semibold"
-              >
-                Logout
-              </button>
-            </div>
+
+            <button onClick={() => setShowNewAppointmentQR(null)} className="w-full bg-gray-900 text-white py-3 rounded-xl font-bold hover:bg-gray-800 transition-colors">
+              Done
+            </button>
           </div>
         </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Navigation Tabs */}
-        <div className="mb-8">
-          <nav className="flex space-x-8">
-            {[
-              { id: 'overview', label: 'Overview', icon: '📊' },
-              { id: 'history', label: 'Medical History', icon: '🩺' },
-              { id: 'appointments', label: 'Appointments', icon: '📅' },
-              { id: 'notifications', label: 'Notifications', icon: '🔔' },
-              { id: 'settings', label: 'Settings', icon: '⚙️' }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center px-4 py-2 rounded-lg font-semibold transition-colors ${activeTab === tab.id
-                  ? 'bg-blue-500 text-white'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  }`}
-              >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.label}
-                {tab.id === 'notifications' && notifications.filter(n => n.unread).length > 0 && (
-                  <span className="ml-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {notifications.filter(n => n.unread).length}
-                  </span>
-                )}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        {/* Content */}
-        <div>
-          {activeTab === 'overview' && renderOverview()}
-          {activeTab === 'history' && renderMedicalHistory()}
-          {activeTab === 'appointments' && renderAppointments()}
-          {activeTab === 'notifications' && renderNotifications()}
-          {activeTab === 'settings' && renderSettings()}
-        </div>
-      </div>
-
-      {/* QR Code Modal */}
-      <QRCodeModal />
-    </div>
+      )}
+    </>
   );
 };
 
 export default PatientDashboard;
+

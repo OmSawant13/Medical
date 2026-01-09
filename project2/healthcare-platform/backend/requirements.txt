@@ -1,0 +1,20 @@
+flask
+flask-cors
+torch
+torchvision
+torchxrayvision
+scikit-image
+opencv-python
+numpy
+werkzeug
+termcolor
+fpdf
+# Chain-of-Diagnosis dependencies (optional - for DiagnosisGPT)
+transformers>=4.30.0
+accelerate
+faiss-cpu
+# Or faiss-gpu if GPU available
+# faiss-gpu
+pandas
+scikit-learn
+nltk
