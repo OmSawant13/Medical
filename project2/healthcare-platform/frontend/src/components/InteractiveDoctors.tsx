@@ -18,15 +18,15 @@ const InteractiveDoctors: React.FC<InteractiveDoctorsProps> = ({ isPasswordFocus
     // Lerp helper
     const lerp = (start: number, end: number, factor: number) => start + (end - start) * factor;
 
-    // Simplified Animation Loop (Focus on smoothness)
-    const animate = () => {
-        currentPos.current.x = lerp(currentPos.current.x, targetPos.current.x, 0.08);
-        currentPos.current.y = lerp(currentPos.current.y, targetPos.current.y, 0.08);
-        setRenderPos({ ...currentPos.current });
-        requestRef.current = requestAnimationFrame(animate);
-    };
-
     useEffect(() => {
+        // Simplified Animation Loop (Focus on smoothness)
+        const animate = () => {
+            currentPos.current.x = lerp(currentPos.current.x, targetPos.current.x, 0.08);
+            currentPos.current.y = lerp(currentPos.current.y, targetPos.current.y, 0.08);
+            setRenderPos({ ...currentPos.current });
+            requestRef.current = requestAnimationFrame(animate);
+        };
+
         const handleMouseMove = (event: MouseEvent) => {
             if (!containerRef.current) return;
             const rect = containerRef.current.getBoundingClientRect();

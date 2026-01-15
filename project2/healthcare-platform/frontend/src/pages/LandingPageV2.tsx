@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function LandingPageV2() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -81,7 +81,7 @@ export default function LandingPageV2() {
         </div>
 
         {/* Mobile Menu Dropdown (Floating Style) */}
-        {/* @ts-expect-error AnimatePresence type mismatch */}
+
         <AnimatePresence>
           {mobileMenuOpen && (
             <motion.div
@@ -463,26 +463,26 @@ export default function LandingPageV2() {
             <div>
               <h4 className="font-bold text-gray-900 mb-4">Platform</h4>
               <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href="#" className="hover:text-orange-600 transition-colors">Find Hospitals</a></li>
-                <li><a href="#" className="hover:text-orange-600 transition-colors">Book Appointments</a></li>
-                <li><a href="#" className="hover:text-orange-600 transition-colors">Consult Doctors</a></li>
+                <li><button className="hover:text-orange-600 transition-colors text-left">Find Hospitals</button></li>
+                <li><button className="hover:text-orange-600 transition-colors text-left">Book Appointments</button></li>
+                <li><button className="hover:text-orange-600 transition-colors text-left">Consult Doctors</button></li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-bold text-gray-900 mb-4">Company</h4>
               <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href="#" className="hover:text-orange-600 transition-colors">About Us</a></li>
-                <li><a href="#" className="hover:text-orange-600 transition-colors">Careers</a></li>
-                <li><a href="#" className="hover:text-orange-600 transition-colors">Contact</a></li>
+                <li><button className="hover:text-orange-600 transition-colors text-left">About Us</button></li>
+                <li><button className="hover:text-orange-600 transition-colors text-left">Careers</button></li>
+                <li><button className="hover:text-orange-600 transition-colors text-left">Contact</button></li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-bold text-gray-900 mb-4">Legal</h4>
               <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href="#" className="hover:text-orange-600 transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-orange-600 transition-colors">Terms of Service</a></li>
+                <li><button className="hover:text-orange-600 transition-colors text-left">Privacy Policy</button></li>
+                <li><button className="hover:text-orange-600 transition-colors text-left">Terms of Service</button></li>
               </ul>
             </div>
           </div>
@@ -1012,7 +1012,8 @@ const features = [
 
 function UserJourneySection() {
   const [activeTab, setActiveTab] = useState(0);
-  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+  const [isAutoPlaying] = useState(true);
 
   // Auto-play logic
   useEffect(() => {
@@ -1064,7 +1065,7 @@ function UserJourneySection() {
 
             {/* Screen Content */}
             <div className="bg-white rounded-[1.5rem] overflow-hidden aspect-[16/10] relative w-full h-full min-h-[300px] md:min-h-[500px]">
-              {/* @ts-expect-error AnimatePresence type mismatch */}
+              
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}

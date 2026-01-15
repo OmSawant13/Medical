@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { doctorAPI } from '../services/api';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import StatCard from '../components/dashboard/StatCard';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 
 interface PatientScan {
   scanId: string;
@@ -126,6 +126,136 @@ interface AIAnalysisResult {
     model: string;
   };
 }
+
+/* ---------------------------------------------------------------------------
+ * KNOWLEDGE BASE & AI CONFIGURATION
+ * --------------------------------------------------------------------------- */
+const diseaseDatabase = [
+  {
+    name: 'Acute Viral Bronchitis',
+    triggers: ['cough', 'fever', 'chest', 'breathing', 'cold'],
+    required: ['cough'],
+    baseConfidence: 60,
+    historyBoost: 10,
+    recoveryWeeks: 3,
+    reasoningTemplate: (matches: string[]) => `Presentation of ${matches.join(', ')} aligns with respiratory pathology. Rule out acute bacterial superinfection.`
+  },
+  {
+    name: 'Viral Pyrexia (Seasonal)',
+    triggers: ['fever', 'chills', 'body pain', 'headache', 'weakness', 'fatigue'],
+    required: ['fever'],
+    baseConfidence: 70,
+    historyBoost: 8,
+    recoveryWeeks: 2,
+    reasoningTemplate: (matches: string[]) => `Systemic symptoms (${matches.join(', ')}) indicate viral origin. Differential: Dengue/Malaria if endemic.`
+  },
+  {
+    name: 'Stress Fracture / Trauma',
+    triggers: ['pain', 'ache', 'swelling', 'bruise', 'trauma', 'fall', 'bone', 'leg', 'arm', 'foot', 'ankle', 'wrist', 'knee'],
+    required: ['bone', 'trauma', 'fall', 'fracture', 'injury', 'leg', 'arm', 'foot', 'ankle', 'wrist', 'knee'], // Removed generic 'pain'
+    baseConfidence: 60, // Lowered base confidence
+    historyBoost: 15,
+    recoveryWeeks: 12,
+    reasoningTemplate: (matches: string[]) => `Localized injury symptoms (${matches.join(', ')}) suggest orthopedic involvement.`
+  },
+  {
+    name: 'Acute Gastritis',
+    triggers: ['stomach', 'pain', 'vomiting', 'nausea', 'acid', 'bloating'],
+    required: ['stomach', 'pain', 'vomiting', 'nausea'],
+    baseConfidence: 65,
+    historyBoost: 5,
+    recoveryWeeks: 1,
+    reasoningTemplate: (matches: string[]) => `GI-specific clustering (${matches.join(', ')}) points to gastric inflammation.`
+  },
+  {
+    name: 'Acute Gastroenteritis',
+    triggers: ['vomiting', 'nausea', 'diarrhea', 'loose motion', 'stomach', 'cramp', 'fever'],
+    required: ['vomiting', 'diarrhea', 'loose motion'],
+    baseConfidence: 70,
+    historyBoost: 5,
+    recoveryWeeks: 1,
+    reasoningTemplate: (matches: string[]) => `Classic presentation of vomiting/diarrhea (${matches.join(', ')}) suggests infectious gastroenteritis.`
+  },
+  {
+    name: 'Urinary Tract Infection',
+    triggers: ['burning', 'urine', 'urinating', 'bladder', 'frequency', 'urinate', 'pee', 'discomfort'],
+    required: ['burning', 'urine', 'urinating', 'bladder'],
+    baseConfidence: 75,
+    historyBoost: 5,
+    recoveryWeeks: 1,
+    reasoningTemplate: (matches: string[]) => `Urinary symptoms (${matches.join(', ')}) strongly indicate a lower urinary tract infection.`
+  }
+];
+
+// Helper: Advanced Protocol Generator
+const generateAdvancedProtocols = (diagnosis: any, symptoms: string[], isRecurrent: boolean, historyMatch: any, allPrescriptions: any[]) => {
+  const protocols = [];
+
+  // A. History-Driven Precision Medicine (Keep Logic)
+  if (isRecurrent && historyMatch) {
+    const pastRx = allPrescriptions.find((p: any) => p.appointmentId === historyMatch.appointmentId);
+    if (pastRx && pastRx.digitalPrescription?.medicines?.length > 0) {
+      const med = pastRx.digitalPrescription.medicines[0];
+      protocols.push({
+        name: med.name,
+        dosage: `${med.dosage}`,
+        reasoning: `High Efficacy Record (${new Date(historyMatch.appointmentDate || historyMatch.date).toLocaleDateString()})`,
+        type: 'history_based' as const
+      });
+    }
+  }
+
+  // B. Evidence-Based Clinical Guidelines
+  const diagnosisName = (diagnosis.diagnosis || diagnosis.name || '').toLowerCase();
+
+  if (diagnosisName.includes('fever') || diagnosisName.includes('pyrexia')) {
+    protocols.push({
+      name: 'Paracetamol',
+      dosage: '650mg | q4h SOS',
+      reasoning: 'First-line antipyretic.',
+      type: 'clinical_guideline' as const
+    });
+  }
+  if (diagnosisName.includes('bronchitis') || symptoms.some(s => s.toLowerCase().includes('cough'))) {
+    protocols.push({
+      name: 'Levosalbutamol + Ambroxol',
+      dosage: '10ml | TID',
+      reasoning: 'Mucolytic + Bronchodilator.',
+      type: 'clinical_guideline' as const
+    });
+  }
+  if (diagnosisName.includes('fracture') || diagnosisName.includes('trauma') || symptoms.some(s => s.toLowerCase().includes('pain'))) {
+    protocols.push({
+      name: 'Aceclofenac + Paracetamol',
+      dosage: 'BID',
+      reasoning: 'Anti-inflammatory/Analgesic.',
+      type: 'clinical_guideline' as const
+    });
+  }
+  if (diagnosisName.includes('gastritis') || diagnosisName.includes('stomach') || symptoms.some(s => s.toLowerCase().includes('vomit'))) {
+    protocols.push({
+      name: 'Pantoprazole + Domperidone',
+      dosage: '40mg | OD (Empty Stomach)',
+      reasoning: 'PPI + Prokinetic for Gastritis.',
+      type: 'clinical_guideline' as const
+    });
+  }
+  if (diagnosisName.includes('gastroenteritis') || diagnosisName.includes('diarrhea')) {
+    protocols.push({
+      name: 'ORS + Zinc / Ondansetron',
+      dosage: 'As per hydration',
+      reasoning: 'rehydration + Antiemetic.',
+      type: 'clinical_guideline' as const
+    });
+  }
+
+  return protocols.length > 0 ? protocols : [{
+    name: 'Symptomatic Management',
+    dosage: 'As per vitals',
+    reasoning: 'Supportive care.',
+    type: 'clinical_guideline' as const
+  }];
+};
 
 const DoctorDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -451,72 +581,9 @@ const DoctorDashboard: React.FC = () => {
   };
 
   /* ---------------------------------------------------------------------------
-   * KNOWLEDGE BASE & AI CONFIGURATION
-   * --------------------------------------------------------------------------- */
-  const diseaseDatabase = [
-    {
-      name: 'Acute Viral Bronchitis',
-      triggers: ['cough', 'fever', 'chest', 'breathing', 'cold'],
-      required: ['cough'],
-      baseConfidence: 60,
-      historyBoost: 10,
-      recoveryWeeks: 3,
-      reasoningTemplate: (matches: string[]) => `Presentation of ${matches.join(', ')} aligns with respiratory pathology. Rule out acute bacterial superinfection.`
-    },
-    {
-      name: 'Viral Pyrexia (Seasonal)',
-      triggers: ['fever', 'chills', 'body pain', 'headache', 'weakness', 'fatigue'],
-      required: ['fever'],
-      baseConfidence: 70,
-      historyBoost: 8,
-      recoveryWeeks: 2,
-      reasoningTemplate: (matches: string[]) => `Systemic symptoms (${matches.join(', ')}) indicate viral origin. Differential: Dengue/Malaria if endemic.`
-    },
-    {
-      name: 'Stress Fracture / Trauma',
-      triggers: ['pain', 'ache', 'swelling', 'bruise', 'trauma', 'fall', 'bone', 'leg', 'arm', 'foot', 'ankle', 'wrist', 'knee'],
-      required: ['bone', 'trauma', 'fall', 'fracture', 'injury', 'leg', 'arm', 'foot', 'ankle', 'wrist', 'knee'], // Removed generic 'pain'
-      baseConfidence: 60, // Lowered base confidence
-      historyBoost: 15,
-      recoveryWeeks: 12,
-      reasoningTemplate: (matches: string[]) => `Localized injury symptoms (${matches.join(', ')}) suggest orthopedic involvement.`
-    },
-    {
-      name: 'Acute Gastritis',
-      triggers: ['stomach', 'pain', 'vomiting', 'nausea', 'acid', 'bloating'],
-      required: ['stomach', 'pain', 'vomiting', 'nausea'],
-      baseConfidence: 65,
-      historyBoost: 5,
-      recoveryWeeks: 1,
-      reasoningTemplate: (matches: string[]) => `GI-specific clustering (${matches.join(', ')}) points to gastric inflammation.`
-    },
-    {
-      name: 'Acute Gastroenteritis',
-      triggers: ['vomiting', 'nausea', 'diarrhea', 'loose motion', 'stomach', 'cramp', 'fever'],
-      required: ['vomiting', 'diarrhea', 'loose motion'],
-      baseConfidence: 70,
-      historyBoost: 5,
-      recoveryWeeks: 1,
-      reasoningTemplate: (matches: string[]) => `Classic presentation of vomiting/diarrhea (${matches.join(', ')}) suggests infectious gastroenteritis.`
-    },
-    {
-      name: 'Urinary Tract Infection',
-      triggers: ['burning', 'urine', 'urinating', 'bladder', 'frequency', 'urinate', 'pee', 'discomfort'],
-      required: ['burning', 'urine', 'urinating', 'bladder'],
-      baseConfidence: 75,
-      historyBoost: 5,
-      recoveryWeeks: 1,
-      reasoningTemplate: (matches: string[]) => `Urinary symptoms (${matches.join(', ')}) strongly indicate a lower urinary tract infection.`
-    }
-  ];
-
-  /* ---------------------------------------------------------------------------
    * ADVANCED AI DIAGNOSTIC ENGINE (Hybrid: ML + Historical Heuristics)
    * --------------------------------------------------------------------------- */
-  /* ---------------------------------------------------------------------------
-   * ADVANCED AI DIAGNOSTIC ENGINE (Hybrid: ML + Historical Heuristics)
-   * --------------------------------------------------------------------------- */
-  const analyzePatientData = (patient: PatientQueue, history: any): AIAnalysisResult => {
+  const analyzePatientData = useCallback((patient: PatientQueue, history: any): AIAnalysisResult => {
 
     // 1. Patient Context Extraction
     const currentSymptoms = patient.symptoms.map(s => s.toLowerCase());
@@ -535,11 +602,39 @@ const DoctorDashboard: React.FC = () => {
     const recurrenceDate = historyMatch ? new Date(historyMatch.appointmentDate || historyMatch.date).toLocaleDateString() : undefined;
 
     // 4. Scoring Engine (Local Fallback)
-    // 4. Scoring Engine (Local Fallback - AI DECOMMISSIONED)
-    let topDiagnosis = { diagnosis: 'Clinical Analysis Ready', confidence: 100, reasoning: 'AI Services Decommissioned. Manual entry mode.' };
+    let topDiagnosis = { diagnosis: 'Unknown Condition', confidence: 0, reasoning: 'Symptoms do not match known patterns.' };
+
+    // Simple matching engine using diseaseDatabase
+    const scoredDiseases = diseaseDatabase.map(disease => {
+      const matches = disease.triggers.filter(trigger =>
+        currentSymptoms.some(s => s.includes(trigger))
+      );
+
+      const hasRequired = disease.required.every(req =>
+        currentSymptoms.some(s => s.includes(req))
+      );
+
+      if (!hasRequired) return { ...disease, score: 0, matches };
+
+      let score = disease.baseConfidence + (matches.length * 5); // Boost by match count
+      if (isRecurrent) score += disease.historyBoost;
+
+      return { ...disease, score: Math.min(score, 95), matches };
+    }).sort((a, b) => b.score - a.score);
+
+    if (scoredDiseases.length > 0 && scoredDiseases[0].score > 0) {
+      const best = scoredDiseases[0];
+      topDiagnosis = {
+        diagnosis: best.name,
+        confidence: best.score,
+        reasoning: best.reasoningTemplate(best.matches)
+      };
+    }
 
     // 5. Generate Clinical Advice
-    let clinicalNote = "Ready for doctor's assessment.";
+    let clinicalNote = topDiagnosis.confidence > 50
+      ? `Local analysis suggests ${topDiagnosis.diagnosis}.`
+      : "Symptoms unclear. Manual clinical assessment required.";
 
     // 5. Construct Result
     return {
@@ -551,91 +646,27 @@ const DoctorDashboard: React.FC = () => {
         confidence: isRecurrent ? 85 : 0,
         relatedVisitDate: recurrenceDate
       },
-      differentials: [],
-      protocols: [],
+      differentials: scoredDiseases.slice(0, 3).map(d => ({
+        diagnosis: d.name,
+        confidence: d.score,
+        reasoning: d.reasoningTemplate(d.matches)
+      })),
+      protocols: generateAdvancedProtocols(topDiagnosis, currentSymptoms, isRecurrent, historyMatch, history.prescriptions),
       // structuredOutput
       structuredOutput: {
         primaryImpression: {
-          name: "Manual Diagnosis",
-          reasoning: "AI services have been turned off."
+          name: topDiagnosis.diagnosis,
+          reasoning: topDiagnosis.reasoning
         },
-        differentialDiagnosis: [],
+        differentialDiagnosis: scoredDiseases.slice(0, 3).map(d => ({
+          name: d.name,
+          reasoning: d.reasoningTemplate(d.matches),
+          confidence: d.score
+        })),
         clinicalNote: clinicalNote
       }
     };
-  };
-
-
-
-  // Helper: Advanced Protocol Generator
-  const generateAdvancedProtocols = (diagnosis: any, symptoms: string[], isRecurrent: boolean, historyMatch: any, allPrescriptions: any[]) => {
-    const protocols = [];
-
-    // A. History-Driven Precision Medicine (Keep Logic)
-    if (isRecurrent && historyMatch) {
-      const pastRx = allPrescriptions.find((p: any) => p.appointmentId === historyMatch.appointmentId);
-      if (pastRx && pastRx.digitalPrescription?.medicines?.length > 0) {
-        const med = pastRx.digitalPrescription.medicines[0];
-        protocols.push({
-          name: med.name,
-          dosage: `${med.dosage}`,
-          reasoning: `High Efficacy Record (${new Date(historyMatch.appointmentDate || historyMatch.date).toLocaleDateString()})`,
-          type: 'history_based' as const
-        });
-      }
-    }
-
-    // B. Evidence-Based Clinical Guidelines
-    const diagnosisName = (diagnosis.diagnosis || diagnosis.name || '').toLowerCase();
-
-    if (diagnosisName.includes('fever') || diagnosisName.includes('pyrexia')) {
-      protocols.push({
-        name: 'Paracetamol',
-        dosage: '650mg | q4h SOS',
-        reasoning: 'First-line antipyretic.',
-        type: 'clinical_guideline' as const
-      });
-    }
-    if (diagnosisName.includes('bronchitis') || symptoms.some(s => s.toLowerCase().includes('cough'))) {
-      protocols.push({
-        name: 'Levosalbutamol + Ambroxol',
-        dosage: '10ml | TID',
-        reasoning: 'Mucolytic + Bronchodilator.',
-        type: 'clinical_guideline' as const
-      });
-    }
-    if (diagnosisName.includes('fracture') || diagnosisName.includes('trauma') || symptoms.some(s => s.toLowerCase().includes('pain'))) {
-      protocols.push({
-        name: 'Aceclofenac + Paracetamol',
-        dosage: 'BID',
-        reasoning: 'Anti-inflammatory/Analgesic.',
-        type: 'clinical_guideline' as const
-      });
-    }
-    if (diagnosisName.includes('gastritis') || diagnosisName.includes('stomach') || symptoms.some(s => s.toLowerCase().includes('vomit'))) {
-      protocols.push({
-        name: 'Pantoprazole + Domperidone',
-        dosage: '40mg | OD (Empty Stomach)',
-        reasoning: 'PPI + Prokinetic for Gastritis.',
-        type: 'clinical_guideline' as const
-      });
-    }
-    if (diagnosisName.includes('gastroenteritis') || diagnosisName.includes('diarrhea')) {
-      protocols.push({
-        name: 'ORS + Zinc / Ondansetron',
-        dosage: 'As per hydration',
-        reasoning: 'rehydration + Antiemetic.',
-        type: 'clinical_guideline' as const
-      });
-    }
-
-    return protocols.length > 0 ? protocols : [{
-      name: 'Symptomatic Management',
-      dosage: 'As per vitals',
-      reasoning: 'Supportive care.',
-      type: 'clinical_guideline' as const
-    }];
-  };
+  }, []);
 
   // NEW: Update Effect to use ML
   // NEW: Update Effect to use ML Backend
@@ -705,22 +736,18 @@ const DoctorDashboard: React.FC = () => {
             setAiInsight(insight);
           } else {
             // Fallback if API fails logically
-            setAiInsight({
-              patternDetected: { match: false, details: "AI returned no results", confidence: 0 },
-              differentials: [],
-              protocols: [],
-              structuredOutput: { primaryImpression: { name: "Analysis Failed", reasoning: data.error }, differentialDiagnosis: [] }
-            });
+            // Fallback if API fails logically
+            console.warn("AI API logical failure, falling back to local engine.");
+            const fallbackResult = analyzePatientData(currentPatient, patientMedicalHistory);
+            setAiInsight(fallbackResult);
           }
 
         } catch (error) {
           console.error("AI Backend Error:", error);
-          setAiInsight({
-            patternDetected: { match: false, details: "Connection Error", confidence: 0 },
-            differentials: [],
-            protocols: [],
-            structuredOutput: { primaryImpression: { name: "Service Unavailable", reasoning: "Could not connect to AI server" }, differentialDiagnosis: [] }
-          });
+          console.error("AI Backend Error:", error);
+          console.warn("Falling back to local analysis engine.");
+          const fallbackResult = analyzePatientData(currentPatient, patientMedicalHistory);
+          setAiInsight(fallbackResult);
         }
       } else {
         setAiInsight(null);
@@ -728,7 +755,7 @@ const DoctorDashboard: React.FC = () => {
     };
 
     fetchAIAnalysis();
-  }, [currentPatient, patientMedicalHistory, loadingHistory]);
+  }, [currentPatient, patientMedicalHistory, loadingHistory, analyzePatientData]);
 
   const seePatient = async (patient: PatientQueue) => {
     // Update appointment status to "in-progress"
@@ -2379,11 +2406,7 @@ const DoctorDashboard: React.FC = () => {
     );
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('userData');
-    localStorage.removeItem('userRole');
-    navigate('/');
-  };
+
 
   if (!user) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;

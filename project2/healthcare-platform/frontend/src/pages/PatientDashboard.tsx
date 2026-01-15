@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import QRCode from 'react-qr-code';
 import { patientAPI, authAPI } from '../services/api';
 import { generateMedicalReportPDF, generateMedicalReportPDFBlobUrl } from '../utils/pdfGenerator';
@@ -975,54 +975,7 @@ const PatientDashboard: React.FC = () => {
     }
   };
 
-  const addMedicalNotes = () => {
-    const notes = window.prompt('Enter your medical notes or symptoms:');
-    if (notes) {
-      alert(`✅ Medical notes added:\n"${notes}"\n\nNotes will be shared with your doctor during the next consultation.`);
-    }
-  };
 
-  const viewPerformanceMetrics = () => {
-    const metrics = {
-      totalAppointments: appointments.length,
-      completedAppointments: appointments.filter(a => a.status === 'completed').length,
-      totalScans: scans.length,
-      averageWaitTime: '15 minutes',
-      lastVisit: appointments.length > 0 ? appointments[appointments.length - 1]?.date : 'N/A'
-    };
-
-    alert(`📊 Your Health Metrics:\n\n` +
-      `Total Appointments: ${metrics.totalAppointments}\n` +
-      `Completed: ${metrics.completedAppointments}\n` +
-      `Total Scans: ${metrics.totalScans}\n` +
-      `Average Wait Time: ${metrics.averageWaitTime}\n` +
-      `Last Visit: ${metrics.lastVisit}`);
-  };
-
-  const generateHealthReport = () => {
-    const report = {
-      patientName: user?.name || 'Patient',
-      reportDate: new Date().toLocaleDateString(),
-      healthSummary: {
-        recentScans: scans.filter(s => s.status === 'doctor_reviewed').length,
-        upcomingAppointments: appointments.filter(a => a.status !== 'completed').length,
-        overallHealth: 'Good',
-        recommendations: [
-          'Continue regular checkups',
-          'Maintain healthy lifestyle',
-          'Follow prescribed medications'
-        ]
-      }
-    };
-
-    alert(`🏥 Health Report Generated!\n\n` +
-      `Patient: ${report.patientName}\n` +
-      `Date: ${report.reportDate}\n` +
-      `Recent Scans: ${report.healthSummary.recentScans}\n` +
-      `Upcoming Appointments: ${report.healthSummary.upcomingAppointments}\n` +
-      `Overall Health: ${report.healthSummary.overallHealth}\n\n` +
-      `Report saved to your medical records.`);
-  };
 
   const saveSettings = async () => {
     try {
@@ -1277,9 +1230,7 @@ const PatientDashboard: React.FC = () => {
           {completedAppointments.length > 0 ? (
             <div className="space-y-4 max-h-[600px] overflow-y-auto">
               {completedAppointments.map(appointment => {
-                const appointmentPrescription = prescriptions.find(
-                  p => p.appointmentId === appointment.appointmentId || p.appointmentId === appointment._id
-                );
+
 
                 return (
                   <div
