@@ -2,6 +2,7 @@ const express = require('express');
 const Appointment = require('../models/Appointment');
 const Patient = require('../models/Patient');
 const Doctor = require('../models/Doctor');
+const Notification = require('../models/Notification');
 const { authenticateToken, authorizeRoles, validateHIPAA } = require('../middleware/auth');
 const { generateAppointmentId, generateQRCode, generateMeetingLink } = require('../utils/generators');
 
@@ -113,6 +114,26 @@ router.post('/', authorizeRoles('patient', 'doctor', 'hospital'), async (req, re
                 { $set: { hospitalAffiliation: hospitalId } }
             );
             console.log(`✅ Updated doctor ${doctorId} hospitalAffiliation to ${hospitalId}`);
+        }
+
+        // EMERGENCY NOTIFICATION
+        if (type === 'emergency') {
+            console.log(`🚨 Emergency Appointment Booked! Creating notification for Dr. ${doctor.userId?.name}`);
+
+            const notification = new Notification({
+                recipientId: doctor.userId._id, // Send to Doctor's User ID
+                title: '🚨 EMERGENCY APPOINTMENT',
+                message: `URGENT: ${patient.personalInfo?.name || 'Patient'} has booked an EMERGENCY appointment for ${appointmentTime}. Symptoms: ${symptoms}`,
+                type: 'emergency_appointment',
+                data: {
+                    appointmentId,
+                    patientId,
+                    symptoms
+                }
+            });
+
+            await notification.save();
+            console.log(`   Notification saved: ${notification._id}`);
         }
 
         // Notify via Socket.IO

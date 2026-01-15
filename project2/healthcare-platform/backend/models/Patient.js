@@ -44,6 +44,10 @@ const patientSchema = new mongoose.Schema({
   priorityScore: {
     type: Number,
     default: 1
+  },
+  isLongTerm: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

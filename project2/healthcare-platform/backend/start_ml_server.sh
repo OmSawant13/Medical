@@ -13,10 +13,10 @@ sleep 2
 mkdir -p ../logs
 
 # Start server
-if [ -d "ml_engine/venv" ]; then
-    source ml_engine/venv/bin/activate
+if [ -d "venv" ]; then
+    source venv/bin/activate
     echo "✅ Using virtual environment"
-    python app.py > ../logs/ml-engine.log 2>&1 &
+    python app_improved.py > ../logs/ml-engine.log 2>&1 &
     SERVER_PID=$!
     echo "✅ Server started with PID: $SERVER_PID"
     echo "📝 Logs: ../logs/ml-engine.log"

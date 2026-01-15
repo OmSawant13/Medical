@@ -33,6 +33,7 @@ interface PatientQueue {
   appointmentId?: string;
   status?: string;
   type?: string;
+  isLongTerm?: boolean;
 }
 
 interface Patient {
@@ -48,6 +49,7 @@ interface Patient {
   currentMedications: string[];
   allergies: string[];
   status: 'active' | 'inactive';
+  isLongTerm?: boolean;
 }
 
 interface ReportData {
@@ -127,6 +129,33 @@ interface AIAnalysisResult {
 
 const DoctorDashboard: React.FC = () => {
   const navigate = useNavigate();
+
+  const renderFormattedText = (text: string) => {
+    if (!text) return null;
+    return text.split('\n').map((line, i) => {
+      // Handle Bullet Points
+      const isBullet = line.trim().startsWith('•') || line.trim().startsWith('-');
+      const cleanLine = line.replace(/^[•-]\s*/, '');
+
+      // Handle Bold **text**
+      const parts = cleanLine.split(/(\*\*.*?\*\*)/g);
+
+      return (
+        <div key={i} className={`mb-1 ${isBullet ? 'pl-2 flex items-start' : ''}`}>
+          {isBullet && <span className="mr-2 text-teal-400">•</span>}
+          <span className={isBullet ? 'flex-1' : ''}>
+            {parts.map((part, j) => {
+              if (part.startsWith('**') && part.endsWith('**')) {
+                return <strong key={j} className="text-teal-200 font-bold">{part.slice(2, -2)}</strong>;
+              }
+              return <span key={j}>{part}</span>;
+            })}
+          </span>
+        </div>
+      );
+    });
+  };
+
   const [activeTab, setActiveTab] = useState('overview');
   const [user, setUser] = useState<any>(null);
   const [pendingScans, setPendingScans] = useState<PatientScan[]>([]);
@@ -135,6 +164,8 @@ const DoctorDashboard: React.FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showAddLongTermModal, setShowAddLongTermModal] = useState(false);
+  const [addPatientSearch, setAddPatientSearch] = useState('');
 
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [currentPatient, setCurrentPatient] = useState<PatientQueue | null>(null);
@@ -374,7 +405,7 @@ const DoctorDashboard: React.FC = () => {
       summary += `Age: ${currentPatient.age || 'N/A'} \n`;
       summary += `Generated: ${new Date().toLocaleString()} \n\n`;
 
-      summary += `MEDICAL HISTORY OVERVIEW: \n`;
+      summary += `LONGER TERM PATIENT OVERVIEW: \n`;
       summary += `- Total Appointments: ${appointments.length} \n`;
       summary += `- Total Prescriptions: ${prescriptions.length} \n`;
       summary += `- Total Scans: ${scans.length} \n\n`;
@@ -607,15 +638,96 @@ const DoctorDashboard: React.FC = () => {
   };
 
   // NEW: Update Effect to use ML
+  // NEW: Update Effect to use ML Backend
   useEffect(() => {
-    if (currentPatient && !loadingHistory) {
-      // 1. Local Heuristic Analysis
-      const insight = analyzePatientData(currentPatient, patientMedicalHistory);
+    const fetchAIAnalysis = async () => {
+      if (currentPatient && !loadingHistory) {
+        // Prepare symptoms string
+        const symptomsText = currentPatient.symptoms.join(', ');
 
-      setAiInsight(insight);
-    } else {
-      setAiInsight(null);
-    }
+        try {
+          const response = await fetch('http://localhost:5002/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: symptomsText })
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            const conditions = data.possible_conditions || [];
+            const topCondition = conditions.length > 0 ? conditions[0] : { name: "Unknown", confidence: 0, reasoning: "Insufficient data" };
+            const topConditionName = topCondition.name || topCondition;
+            const topConfidence = data.confidence_scores ? (data.confidence_scores[topConditionName] || 0) : 0;
+
+            // Map to dashboard AI structure
+            const insight: AIAnalysisResult = {
+              patternDetected: {
+                match: topConfidence > 80,
+                details: `High confidence match for ${topConditionName}`,
+                confidence: topConfidence,
+                relatedVisitDate: undefined
+              },
+              differentials: conditions.map((c: any) => ({
+                diagnosis: c.name || c,
+                confidence: data.confidence_scores ? (data.confidence_scores[c.name || c] || 0) : 0,
+                reasoning: c.reasoning || "AI matched based on symptoms"
+              })),
+              protocols: [], // AI backend could return treatments, mapping them here would be ideal
+              structuredOutput: {
+                primaryImpression: {
+                  name: topConditionName,
+                  reasoning: data.response // Using the full text response as reasoning/summary
+                },
+                differentialDiagnosis: conditions.map((c: any) => ({
+                  name: c.name || c,
+                  reasoning: c.reasoning || "",
+                  confidence: data.confidence_scores ? (data.confidence_scores[c.name || c] || 0) : 0
+                })),
+                clinicalNote: `AI Suggestion: ${topConditionName}. ${data.recommendations ? data.recommendations.join('. ') : ''}`
+              }
+            };
+
+            // Map treatments if available
+            if (data.treatments && data.treatments[topConditionName]) {
+              const treatment = data.treatments[topConditionName];
+              // Assuming treatment structure, adapt as needed
+              if (treatment.treatments) {
+                insight.protocols = treatment.treatments.map((t: string) => ({
+                  name: t,
+                  dosage: treatment.duration || "As prescribed",
+                  reasoning: "AI Recommended",
+                  type: 'clinical_guideline'
+                }));
+              }
+            }
+
+            setAiInsight(insight);
+          } else {
+            // Fallback if API fails logically
+            setAiInsight({
+              patternDetected: { match: false, details: "AI returned no results", confidence: 0 },
+              differentials: [],
+              protocols: [],
+              structuredOutput: { primaryImpression: { name: "Analysis Failed", reasoning: data.error }, differentialDiagnosis: [] }
+            });
+          }
+
+        } catch (error) {
+          console.error("AI Backend Error:", error);
+          setAiInsight({
+            patternDetected: { match: false, details: "Connection Error", confidence: 0 },
+            differentials: [],
+            protocols: [],
+            structuredOutput: { primaryImpression: { name: "Service Unavailable", reasoning: "Could not connect to AI server" }, differentialDiagnosis: [] }
+          });
+        }
+      } else {
+        setAiInsight(null);
+      }
+    };
+
+    fetchAIAnalysis();
   }, [currentPatient, patientMedicalHistory, loadingHistory]);
 
   const seePatient = async (patient: PatientQueue) => {
@@ -718,6 +830,33 @@ const DoctorDashboard: React.FC = () => {
       };
       reader.readAsDataURL(file);
       analyzeImage(file);
+    }
+  };
+
+  const handleToggleLongTerm = async () => {
+    if (!currentPatient) return;
+
+    try {
+      const newStatus = !currentPatient.isLongTerm;
+      const response = await doctorAPI.updatePatientLongTermStatus(currentPatient.patientId, newStatus);
+
+      if (response.success) {
+        // Update local state
+        setCurrentPatient({
+          ...currentPatient,
+          isLongTerm: newStatus
+        });
+
+        // Update patient list if exists
+        setPatients(prev => prev.map(p =>
+          p.patientId === currentPatient.patientId ? { ...p, isLongTerm: newStatus } : p
+        ));
+
+        // Show feedback (optional, assuming toast or alert)
+        // console.log(`Patient marked as ${newStatus ? 'long-term' : 'standard'} care`);
+      }
+    } catch (error) {
+      console.error('Error updating long-term status:', error);
     }
   };
 
@@ -926,7 +1065,7 @@ const DoctorDashboard: React.FC = () => {
           <div className="relative z-10">
             <div className="flex flex-col md:flex-row justify-between items-start mb-6 gap-4 md:gap-0">
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold mb-2">Welcome back, Dr. {user?.name?.split(' ')[0] || 'Doctor'}! 👋</h1>
+                <h1 className="text-2xl md:text-3xl font-bold mb-2">Welcome back, Dr. {user?.name?.replace(/^Dr\.?\s*/i, '').split(' ')[0] || 'Doctor'}! 👋</h1>
                 <p className="text-blue-100 text-base md:text-lg">You have <span className="font-bold text-white">{patientQueue.length} patients</span> waiting today.</p>
               </div>
               <div className="bg-white/20 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10">
@@ -1384,9 +1523,9 @@ const DoctorDashboard: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Medical History */}
+                {/* Longer Term Patient */}
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-3">Medical History</h4>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-3">Longer Term Patient</h4>
                   <div className="bg-gray-50 rounded-lg p-4">
                     <p><strong>Last Visit:</strong> {new Date(selectedPatient.lastVisit).toLocaleDateString()}</p>
                     <p><strong>Total Visits:</strong> {selectedPatient.totalVisits}</p>
@@ -2058,6 +2197,188 @@ const DoctorDashboard: React.FC = () => {
     </div>
   );
 
+  // Long Term Patients View
+  const renderLongTermPatients = () => {
+    const longTermPatients = patients.filter(p => p.isLongTerm);
+
+    // Filter by search for the "Add New" modal/list
+    const dataForAddModal = patients.filter(p => !p.isLongTerm);
+    const filteredAddList = dataForAddModal.filter(p =>
+      p.name.toLowerCase().includes(addPatientSearch.toLowerCase()) ||
+      p.patientId.toLowerCase().includes(addPatientSearch.toLowerCase())
+    );
+
+    const handleAddToLongTerm = async (patient: Patient) => {
+      try {
+        const response = await doctorAPI.updatePatientLongTermStatus(patient.patientId, true);
+        if (response.success) {
+          setPatients(prev => prev.map(p =>
+            p.patientId === patient.patientId ? { ...p, isLongTerm: true } : p
+          ));
+          // setShowAddLongTermModal(false); // Optional: keep open to add more
+        }
+      } catch (error) {
+        console.error("Failed to add to long term:", error);
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        {/* ADD PATIENT MODAL */}
+        {showAddLongTermModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+              <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 className="font-bold text-gray-800">Select Patient to Add</h3>
+                <button onClick={() => setShowAddLongTermModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-200 text-gray-500 transition-colors">
+                  ✕
+                </button>
+              </div>
+
+              <div className="p-4 border-b border-gray-100 bg-white sticky top-0">
+                <div className="relative">
+                  <span className="absolute left-3 top-3 text-gray-400">🔍</span>
+                  <input
+                    autoFocus
+                    type="text"
+                    placeholder="Search by name or ID..."
+                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all"
+                    value={addPatientSearch}
+                    onChange={(e) => setAddPatientSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="max-h-[60vh] overflow-y-auto p-2 space-y-1">
+                {filteredAddList.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">
+                    <p>No matching patients found.</p>
+                  </div>
+                ) : (
+                  filteredAddList.map(patient => (
+                    <div key={patient.patientId} className="flex justify-between items-center p-3 hover:bg-purple-50 rounded-xl group transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold group-hover:bg-purple-200 group-hover:text-purple-700 transition-colors">
+                          {patient.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-800">{patient.name}</p>
+                          <p className="text-xs text-gray-500">ID: {patient.patientId} • {patient.age}y</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleAddToLongTerm(patient)}
+                        className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 font-bold text-xs rounded-lg hover:bg-purple-600 hover:text-white hover:border-purple-600 transition-all shadow-sm"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="p-3 bg-gray-50 text-center text-xs text-gray-400 border-t border-gray-100">
+                Showing {filteredAddList.length} candidate(s)
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-purple-100">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">🌟 Long Term Care Patients</h2>
+              <p className="text-sm text-gray-500 mt-1">Patients requiring ongoing monitoring and extended care plans.</p>
+            </div>
+            <button
+              onClick={() => setShowAddLongTermModal(true)}
+              className="bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 shadow-md flex items-center gap-2 transition-all hover:scale-105"
+            >
+              <span>➕</span> Add Patient
+            </button>
+          </div>
+
+          {longTermPatients.length === 0 ? (
+            <div className="text-center py-16 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+              <span className="text-4xl block mb-4">📭</span>
+              <h3 className="text-lg font-medium text-gray-900">No Long Term Patients Yet</h3>
+              <p className="text-gray-500 mt-2 max-w-sm mx-auto">
+                Mark patients as "Long Term" from their profile or the dashboard to see them here.
+              </p>
+              <button
+                onClick={() => setShowAddLongTermModal(true)}
+                className="mt-6 text-purple-600 font-bold hover:underline"
+              >
+                Add Your First Long Term Patient
+              </button>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {longTermPatients.map(patient => (
+                <div key={patient.patientId} className="bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all p-5 group relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-purple-500"></div>
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold">
+                        {patient.name.charAt(0)}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-gray-900 group-hover:text-purple-600 transition-colors">{patient.name}</h3>
+                        <p className="text-xs text-gray-500">ID: {patient.patientId}</p>
+                      </div>
+                    </div>
+                    <span className="px-2 py-1 bg-purple-50 text-purple-700 text-[10px] font-bold uppercase tracking-wider rounded-md border border-purple-100">
+                      Active
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 mb-4">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Last Visit:</span>
+                      <span className="font-medium text-gray-800">{new Date(patient.lastVisit).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Conditions:</span>
+                      <span className="font-medium text-gray-800 truncate max-w-[120px] text-right">
+                        {patient.chronicConditions[0] || 'None'}
+                        {patient.chronicConditions.length > 1 && ` +${patient.chronicConditions.length - 1}`}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 mt-4 pt-4 border-t border-gray-50">
+                    <button
+                      onClick={() => {
+                        // We need a way to open the patient modal. 
+                        // Check if `setSelectedPatient` is available in scope. Yes, it is state.
+                        setSelectedPatient(patient);
+                      }}
+                      className="flex-1 py-2 text-xs font-bold text-center bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg transition-colors"
+                    >
+                      View Profile
+                    </button>
+                    <button
+                      onClick={() => {
+                        // Quick action to remove from long term? using updatePatientLongTermStatus
+                        doctorAPI.updatePatientLongTermStatus(patient.patientId, false).then(() => {
+                          setPatients(prev => prev.map(p => p.patientId === patient.patientId ? { ...p, isLongTerm: false } : p));
+                        });
+                      }}
+                      className="px-3 py-2 text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 rounded-lg transition-colors tooltip"
+                      title="Remove from Long Term"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('userData');
     localStorage.removeItem('userRole');
@@ -2084,6 +2405,7 @@ const DoctorDashboard: React.FC = () => {
     >
       <div className="space-y-8">
         {activeTab === 'overview' && renderOverview()}
+        {activeTab === 'medical-history' && renderLongTermPatients()}
         {activeTab === 'appointments' && (
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-xl font-bold mb-4">Patient Queue</h2>
@@ -2271,7 +2593,7 @@ const DoctorDashboard: React.FC = () => {
                 {/* COLUMN 2: HISTORY (Context) - 25% */}
                 <div className="col-span-12 lg:col-span-3 border-r border-gray-200 bg-gray-50/50 overflow-y-auto">
                   <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/80 backdrop-blur-sm sticky top-0 z-10">
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Past Medical History</h3>
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Longer Term Patient</h3>
                     <button
                       onClick={generatePatientSummary}
                       disabled={generatingSummary}
@@ -2289,7 +2611,21 @@ const DoctorDashboard: React.FC = () => {
                   )}
 
                   <div className="p-5 pt-4">
-                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Past Medical History</h4>
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Longer Term Patient</h4>
+
+                    {/* Add to Long Term Button */}
+                    <div className="mb-4">
+                      <button
+                        onClick={handleToggleLongTerm}
+                        className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${currentPatient?.isLongTerm
+                          ? 'bg-purple-100 text-purple-700 border border-purple-200 hover:bg-purple-200'
+                          : 'bg-white border border-dashed border-gray-300 text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                          }`}
+                      >
+                        {currentPatient?.isLongTerm ? '🌟 Long Term Patient Active' : '+ Add to Long Term Care'}
+                      </button>
+                    </div>
+
                     <div className="space-y-4">
                       {patientMedicalHistory.appointments
                         .filter((apt: any) => apt.appointmentId !== currentPatient.appointmentId && new Date(apt.appointmentDate) < new Date())
@@ -2329,7 +2665,7 @@ const DoctorDashboard: React.FC = () => {
                             </div>
                           ))
                       ) : (
-                        <p className="text-xs text-gray-400 italic text-center py-4">No prior medical history found.</p>
+                        <p className="text-xs text-gray-400 italic text-center py-4">No longer term patient data found.</p>
                       )}
                     </div>
 
@@ -2470,9 +2806,9 @@ const DoctorDashboard: React.FC = () => {
                             </h5>
                             <div className="bg-teal-950/50 p-3 rounded-lg border border-teal-500/30 shadow-inner">
                               <p className="text-lg font-bold text-teal-100">{aiInsight.structuredOutput.primaryImpression.name}</p>
-                              <p className="text-xs text-teal-300/70 mt-1 italic">
-                                "{aiInsight.structuredOutput.primaryImpression.reasoning}"
-                              </p>
+                              <div className="text-xs text-teal-300/70 mt-1 italic">
+                                {renderFormattedText(aiInsight.structuredOutput.primaryImpression.reasoning)}
+                              </div>
                             </div>
                           </div>
 

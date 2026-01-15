@@ -31,7 +31,7 @@ router.use(authenticateToken);
 router.use(validateHIPAA);
 
 // Mark notification as read
-router.put('/notifications/:notificationId/read', authorizeRoles('patient'), async(req, res) => {
+router.put('/notifications/:notificationId/read', authorizeRoles('patient'), async (req, res) => {
     try {
         const { notificationId } = req.params;
         // For now, just return success - can be extended later
@@ -50,7 +50,7 @@ router.put('/notifications/:notificationId/read', authorizeRoles('patient'), asy
 });
 
 // Get patient profile
-router.get('/profile', authorizeRoles('patient', 'doctor', 'hospital'), async(req, res) => {
+router.get('/profile', authorizeRoles('patient', 'doctor', 'hospital'), async (req, res) => {
     try {
         const { patientId } = req.query;
 
@@ -102,7 +102,7 @@ router.get('/profile', authorizeRoles('patient', 'doctor', 'hospital'), async(re
 });
 
 // Update patient profile
-router.put('/profile', authorizeRoles('patient'), async(req, res) => {
+router.put('/profile', authorizeRoles('patient'), async (req, res) => {
     try {
         // Use req.patient if available (from auth middleware), otherwise fetch
         let patient = req.patient;
@@ -120,11 +120,11 @@ router.put('/profile', authorizeRoles('patient'), async(req, res) => {
         const { personalInfo, medicalInfo } = req.body;
 
         if (personalInfo) {
-            patient.personalInfo = {...patient.personalInfo, ...personalInfo };
+            patient.personalInfo = { ...patient.personalInfo, ...personalInfo };
         }
 
         if (medicalInfo) {
-            patient.medicalInfo = {...patient.medicalInfo, ...medicalInfo };
+            patient.medicalInfo = { ...patient.medicalInfo, ...medicalInfo };
 
             // Recalculate priority score if symptoms or conditions changed
             const symptoms = medicalInfo.currentSymptoms || [];
@@ -151,6 +151,37 @@ router.put('/profile', authorizeRoles('patient'), async(req, res) => {
             success: false,
             error: 'Failed to update profile',
             details: error.message
+        });
+    }
+});
+
+// Toggle patient long-term status
+router.put('/:patientId/long-term', authorizeRoles('doctor'), async (req, res) => {
+    try {
+        const { patientId } = req.params;
+        const { isLongTerm } = req.body;
+
+        const patient = await Patient.findOne({ patientId });
+        if (!patient) {
+            return res.status(404).json({
+                success: false,
+                error: 'Patient not found'
+            });
+        }
+
+        patient.isLongTerm = isLongTerm;
+        await patient.save();
+
+        res.json({
+            success: true,
+            message: `Patient marked as ${isLongTerm ? 'long-term' : 'standard'} care`,
+            data: patient
+        });
+    } catch (error) {
+        console.error('Error updating patient status:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to update patient status'
         });
     }
 });
@@ -184,7 +215,7 @@ const upload = multer({
 });
 
 // Upload medical scan (Patient can upload)
-router.post('/scans/upload', authorizeRoles('patient'), upload.single('scan'), async(req, res) => {
+router.post('/scans/upload', authorizeRoles('patient'), upload.single('scan'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({
@@ -271,7 +302,7 @@ router.post('/scans/upload', authorizeRoles('patient'), upload.single('scan'), a
 });
 
 // Get patient medical scans
-router.get('/scans', authorizeRoles('patient', 'doctor'), async(req, res) => {
+router.get('/scans', authorizeRoles('patient', 'doctor'), async (req, res) => {
     try {
         let patientId;
 
@@ -279,8 +310,8 @@ router.get('/scans', authorizeRoles('patient', 'doctor'), async(req, res) => {
             // Use req.patientId if available (from auth middleware)
             patientId = req.patientId || (req.patient ? req.patient.patientId : '');
             if (!patientId) {
-            const patient = await Patient.findOne({ userId: req.user._id });
-            patientId = patient ? patient.patientId : '';
+                const patient = await Patient.findOne({ userId: req.user._id });
+                patientId = patient ? patient.patientId : '';
             }
         } else {
             patientId = req.query.patientId;
@@ -305,7 +336,7 @@ router.get('/scans', authorizeRoles('patient', 'doctor'), async(req, res) => {
 });
 
 // Get patient appointments
-router.get('/appointments', authorizeRoles('patient', 'doctor'), async(req, res) => {
+router.get('/appointments', authorizeRoles('patient', 'doctor'), async (req, res) => {
     try {
         let patientId;
 
@@ -313,8 +344,8 @@ router.get('/appointments', authorizeRoles('patient', 'doctor'), async(req, res)
             // Use req.patientId if available (from auth middleware)
             patientId = req.patientId || (req.patient ? req.patient.patientId : '');
             if (!patientId) {
-            const patient = await Patient.findOne({ userId: req.user._id });
-            patientId = patient ? patient.patientId : '';
+                const patient = await Patient.findOne({ userId: req.user._id });
+                patientId = patient ? patient.patientId : '';
             }
         } else {
             patientId = req.query.patientId;
@@ -337,7 +368,7 @@ router.get('/appointments', authorizeRoles('patient', 'doctor'), async(req, res)
 });
 
 // Get patient analytics (for RFM analysis demo)
-router.get('/analytics', authorizeRoles('doctor', 'hospital'), async(req, res) => {
+router.get('/analytics', authorizeRoles('doctor', 'hospital'), async (req, res) => {
     try {
         const analytics = await Patient.aggregate([
             // Match active patients from last year

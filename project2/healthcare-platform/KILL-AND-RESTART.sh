@@ -28,8 +28,8 @@ fi
 node server.js &
 
 echo "🐍 Starting Python ML Engine..."
-source "$PROJECT_ROOT/backend/ml_engine/venv/bin/activate"
-python "$PROJECT_ROOT/backend/app.py" &
+source "$PROJECT_ROOT/backend/venv/bin/activate"
+python "$PROJECT_ROOT/backend/app_improved.py" &
 
 sleep 3
 

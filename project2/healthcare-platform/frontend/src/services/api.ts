@@ -47,7 +47,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
   refreshPromise = (async () => {
     try {
       const refreshToken = getRefreshToken();
-      
+
       if (!refreshToken) {
         console.warn('⚠️ No refresh token found');
         clearTokens();
@@ -55,7 +55,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
       }
 
       console.log('🔄 Refreshing access token...');
-      
+
       const response = await fetch(`${API_BASE_URL}/v1/auth/refresh`, {
         method: 'POST',
         headers: {
@@ -124,12 +124,12 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}): Promise<
     // If access token expired, try to refresh
     if (response.status === 401) {
       const errorData = await response.json().catch(() => ({}));
-      
+
       if (errorData.code === 'ACCESS_TOKEN_EXPIRED' || errorData.error?.includes('expired')) {
         console.log('🔄 Access token expired, refreshing...');
-        
+
         const newToken = await refreshAccessToken();
-        
+
         if (newToken) {
           // Retry request with new token
           return makeRequest(newToken);
@@ -143,16 +143,16 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}): Promise<
     if (!response.ok) {
       let errorMessage = `HTTP error! status: ${response.status}`;
       let errorCode = '';
-      
+
       try {
         const errorData = await response.json();
         errorMessage = errorData.error || errorData.message || errorMessage;
         errorCode = errorData.code || '';
-        
+
         if (errorData.errors && Array.isArray(errorData.errors)) {
           errorMessage = errorData.errors.join(', ');
         }
-        
+
         if (errorData.details) {
           errorMessage += ` - ${errorData.details}`;
         }
@@ -166,10 +166,10 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}): Promise<
 
       // Handle specific error codes
       if (response.status === 401 || response.status === 403) {
-        if (errorCode === 'INVALID_ACCESS_TOKEN' || 
-            errorCode === 'INVALID_REFRESH_TOKEN' ||
-            errorMessage.includes('Invalid') ||
-            errorMessage.includes('token')) {
+        if (errorCode === 'INVALID_ACCESS_TOKEN' ||
+          errorCode === 'INVALID_REFRESH_TOKEN' ||
+          errorMessage.includes('Invalid') ||
+          errorMessage.includes('token')) {
           console.warn('⚠️ Invalid token, clearing storage');
           clearTokens();
           error.shouldRedirect = true;
@@ -190,7 +190,7 @@ export const authAPI = {
   login: async (email: string, password: string, role: string) => {
     console.log('🔐 ========== FRONTEND LOGIN START ==========');
     console.log('📧 Login attempt:', { email, role, passwordLength: password ? password.length : 0 });
-    
+
     // Login doesn't require token, so use direct fetch
     try {
       const response = await fetch(`${API_BASE_URL}/v1/auth/login`, {
@@ -211,7 +211,7 @@ export const authAPI = {
           message: errorData.message,
           errors: errorData.errors
         });
-        
+
         const error = new Error(errorData.message || errorData.error || 'Login failed') as any;
         error.code = errorData.code;
         error.status = response.status;
@@ -245,7 +245,7 @@ export const authAPI = {
           refreshTokenLength: refreshToken ? refreshToken.length : 0,
           hasUser: !!user
         });
-        
+
         if (accessToken && refreshToken) {
           console.log('💾 Storing tokens after login...');
           storeTokens(accessToken, refreshToken);
@@ -253,13 +253,13 @@ export const authAPI = {
             localStorage.setItem(USER_DATA_KEY, JSON.stringify(user));
             localStorage.setItem('userRole', user.role);
           }
-          
+
           // Verify storage
           const storedAccessToken = localStorage.getItem('accessToken');
           const storedRefreshToken = localStorage.getItem('refreshToken');
           const storedToken = localStorage.getItem('token');
           const storedUserData = localStorage.getItem('userData');
-          
+
           console.log('✅ Tokens stored verification:', {
             accessToken: !!storedAccessToken,
             refreshToken: !!storedRefreshToken,
@@ -267,7 +267,7 @@ export const authAPI = {
             userData: !!storedUserData,
             accessTokenLength: storedAccessToken ? storedAccessToken.length : 0
           });
-          
+
           if (!storedAccessToken && !storedToken) {
             console.error('❌ CRITICAL: Tokens not stored in localStorage!');
             throw new Error('Failed to store authentication tokens. Please check browser settings.');
@@ -339,7 +339,7 @@ export const authAPI = {
 
   logout: async () => {
     const refreshToken = getRefreshToken();
-    
+
     try {
       if (refreshToken) {
         await apiRequest('/v1/auth/logout', {
@@ -366,7 +366,7 @@ export const patientAPI = {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
-  
+
   getAppointments: () => apiRequest('/v1/appointments'),
   bookAppointment: (appointmentData: any) => apiRequest('/v1/appointments', {
     method: 'POST',
@@ -376,7 +376,7 @@ export const patientAPI = {
     method: 'PUT',
     body: JSON.stringify({ reason }),
   }),
-  
+
   getMedicalHistory: () => apiRequest('/v1/patients/medical-history'),
   getScans: () => apiRequest('/v1/patients/scans'),
   getPrescriptions: () => apiRequest('/v1/prescriptions/patient'),
@@ -384,7 +384,7 @@ export const patientAPI = {
     const formData = new FormData();
     formData.append('scan', file);
     formData.append('scanType', scanType);
-    
+
     const token = getAccessToken();
     const response = await fetch(`${API_BASE_URL}/v1/patients/scans/upload`, {
       method: 'POST',
@@ -393,20 +393,20 @@ export const patientAPI = {
       },
       body: formData
     });
-    
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
       throw new Error(error.message || error.error || 'Failed to upload scan');
     }
-    
+
     return response.json();
   },
-  
+
   getNotifications: () => apiRequest('/v1/patients/notifications'),
   markNotificationRead: (notificationId: string) => apiRequest(`/patient/notifications/${notificationId}/read`, {
     method: 'PUT',
   }),
-  
+
   // Hospital and doctor search
   getHospitals: (params?: { latitude?: number; longitude?: number; radius?: number; city?: string; search?: string }) => {
     const queryParams = new URLSearchParams();
@@ -418,14 +418,14 @@ export const patientAPI = {
     const query = queryParams.toString();
     return apiRequest(`/v1/hospitals${query ? '?' + query : ''}`);
   },
-  
+
   getDoctorsByHospital: (hospitalId: string, hospitalName?: string) => {
     const url = `/v1/hospitals/${hospitalId}/doctors`;
     const query = hospitalName ? `?hospitalName=${encodeURIComponent(hospitalName)}` : '';
     return apiRequest(url + query);
   },
-  
-  getDoctorDetails: (doctorId: string) => 
+
+  getDoctorDetails: (doctorId: string) =>
     apiRequest(`/v1/doctors/${doctorId}`),
 };
 
@@ -440,7 +440,7 @@ export const doctorAPI = {
     body: JSON.stringify(data),
   }),
   getAppointments: () => apiRequest('/v1/appointments'),
-  updateAppointmentStatus: (appointmentId: string, data: { status: string; notes?: string; diagnosis?: string; prescription?: string[] }) => 
+  updateAppointmentStatus: (appointmentId: string, data: { status: string; notes?: string; diagnosis?: string; prescription?: string[] }) =>
     apiRequest(`/v1/appointments/${appointmentId}/status`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -449,6 +449,17 @@ export const doctorAPI = {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
+  getNotifications: () => apiRequest('/v1/notifications'),
+  markNotificationRead: (id: string) => apiRequest(`/v1/notifications/${id}/read`, {
+    method: 'PUT'
+  }),
+  markAllNotificationsRead: () => apiRequest('/v1/notifications/read-all', {
+    method: 'PUT'
+  }),
+  updatePatientLongTermStatus: (patientId: string, isLongTerm: boolean) => apiRequest(`/v1/patients/${patientId}/long-term`, {
+    method: 'PUT',
+    body: JSON.stringify({ isLongTerm })
+  })
 };
 
 // Export token management functions

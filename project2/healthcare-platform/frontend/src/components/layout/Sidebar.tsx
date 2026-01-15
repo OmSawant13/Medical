@@ -4,12 +4,13 @@ interface SidebarProps {
     activeTab: string;
     setActiveTab: (tab: string) => void;
     logout: () => void;
+    role?: 'patient' | 'doctor';
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, logout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, logout, role = 'patient' }) => {
     const menuItems = [
         { id: 'overview', label: 'Overview', icon: '📊' },
-        { id: 'medical-history', label: 'Medical History', icon: '🩺' },
+        { id: 'medical-history', label: role === 'doctor' ? 'Longer Term Patient' : 'Medical History', icon: '🩺' },
         { id: 'appointments', label: 'Appointments', icon: '📅' },
         { id: 'notifications', label: 'Notifications', icon: '🔔' },
         { id: 'settings', label: 'Settings', icon: '⚙️' },

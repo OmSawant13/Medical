@@ -18,3 +18,6 @@ faiss-cpu
 pandas
 scikit-learn
 nltk
+
+openai
+python-dotenv

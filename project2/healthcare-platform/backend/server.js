@@ -11,6 +11,7 @@ const patientRoutes = require('./routes/patients');
 const appointmentRoutes = require('./routes/appointments');
 const hospitalRoutes = require('./routes/hospitals');
 const doctorRoutes = require('./routes/doctor');
+const notificationRoutes = require('./routes/notifications');
 
 // Prescriptions route (optional - requires multer)
 let prescriptionRoutes;
@@ -108,6 +109,7 @@ app.use('/api/v1/patients', patientRoutes);
 app.use('/api/v1/doctors', doctorRoutes);
 app.use('/api/v1/appointments', appointmentRoutes);
 app.use('/api/v1/hospitals', hospitalRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
 // Prescriptions route - always register if available
 if (prescriptionRoutes) {
     app.use('/api/v1/prescriptions', prescriptionRoutes);
@@ -140,7 +142,7 @@ app.use('*', (req, res) => {
 });
 
 // Connect to MongoDB and start server
-const startServer = async() => {
+const startServer = async () => {
     try {
         // Try to connect to MongoDB (local or Atlas)
         try {

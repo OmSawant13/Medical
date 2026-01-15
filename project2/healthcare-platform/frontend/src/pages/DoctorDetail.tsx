@@ -259,8 +259,8 @@ const DoctorDetail: React.FC = () => {
                     <div
                       key={day}
                       className={`p-3 rounded-lg border-2 ${availability?.available
-                          ? 'border-green-200 bg-green-50'
-                          : 'border-gray-200 bg-gray-50'
+                        ? 'border-green-200 bg-green-50'
+                        : 'border-gray-200 bg-gray-50'
                         }`}
                     >
                       <p className="font-semibold text-sm text-gray-700">{day.slice(0, 3)}</p>
@@ -380,8 +380,8 @@ const DoctorDetail: React.FC = () => {
                   type="submit"
                   disabled={submitting}
                   className={`w-full py-3 px-4 rounded-lg font-semibold text-white transition-all ${submitting
-                      ? 'bg-gray-400 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700 transform hover:scale-105'
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700 transform hover:scale-105'
                     }`}
                 >
                   {submitting ? 'Booking...' : `Book Appointment - ₹${doctor.consultationFee || 500}`}

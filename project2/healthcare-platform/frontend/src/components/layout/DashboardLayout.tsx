@@ -23,9 +23,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     logout
 }) => {
     const getPageTitle = () => {
+        const isDoctor = user?.role === 'doctor';
         switch (activeTab) {
             case 'overview': return 'Dashboard Overview';
-            case 'medical-history': return 'Medical History';
+            case 'medical-history': return isDoctor ? 'Longer Term Patient' : 'Medical History';
             case 'appointments': return 'My Appointments';
             case 'notifications': return 'Notifications';
             case 'settings': return 'Account Settings';
@@ -40,6 +41,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
                 logout={logout}
+                role={user?.role || 'patient'}
             />
 
             {/* Main Content Wrapper */}

@@ -14,4 +14,4 @@ fi
 
 echo " [AI-SETUP] Starting AI Server..."
 echo " [AI-INFO] Note: First run will download ~100MB model weights."
-python app.py
+python app_improved.py

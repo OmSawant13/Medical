@@ -850,142 +850,35 @@ def analyze_symptoms(symptoms_text):
                 "duration": condition_info["data"].get("duration", "Varies")
             }
     
-    # Comprehensive Local Knowledge Base
-
-    # Format: Condition -> {keywords, symptoms, treatments, urgency, reasoning}
-    knowledge_base = {
-        "Viral Fever / Influenza": {
-            "keywords": ["fever", "body ache", "weakness", "chills", "headache", "cold", "cough", "fatigue"],
-            "required_count": 2,
-            "severity": "consult_doctor",
-            "treatments": ["Rest and hydration", "Paracetamol for fever (consult doctor for dosage)", "Warm saline gargles for throat"],
-            "reasoning": "Presence of fever combined with systemic symptoms like body aches and weakness suggests a viral etiology."
-        },
-        "Common Cold": {
-            "keywords": ["runny nose", "sneezing", "sore throat", "cough", "mild fever", "congestion"],
-            "required_count": 2,
-            "severity": "monitor",
-            "treatments": ["Steam inhalation", "Warm fluids", "Antihistamines (if prescribed)"],
-            "reasoning": "Upper respiratory symptoms like runny nose and sneezing are classic signs of the common cold."
-        },
-        "Migraine / Tension Headache": {
-            "keywords": ["headache", "nausea", "light sensitivity", "throbbing", "one side", "stress"],
-            "required_count": 2,
-            "severity": "monitor",
-            "treatments": ["Rest in a dark, quiet room", "Hydration", "Paid relief medication (NSAIDs)"],
-            "reasoning": "Unilateral throbbing headache often associated with nausea or light sensitivity."
-        },
-        "Gastroenteritis (Stomach Flu)": {
-            "keywords": ["stomach pain", "vomiting", "diarrhea", "nausea", "cramps", "loose motion"],
-            "required_count": 2,
-            "severity": "consult_doctor",
-            "treatments": ["ORS (Oral Rehydration Solution)", "Bland diet (BRAT diet)", "Probiotics"],
-            "reasoning": "Combination of digestive symptoms indicates gastrointestinal inflammation."
-        },
-        "Urinary Tract Infection (UTI)": {
-            "keywords": ["burning urination", "frequent urination", "lower abdominal pain", "cloudy urine"],
-            "required_count": 2,
-            "severity": "consult_doctor",
-            "treatments": ["Increased water intake", "Antibiotics (strictly by prescription)", "Cranberry juice"],
-            "reasoning": "Urinary symptoms suggests localized infection needing medical attention."
-        },
-        "Bronchitis / Respiratory Infection": {
-            "keywords": ["cough", "chest pain", "breathlessness", "wheezing", "phlegm", "chest congestion"],
-            "required_count": 2,
-            "severity": "consult_doctor",
-            "treatments": ["Bronchodilators (if asthma)", "Steam inhalation", "Antibiotics (if bacterial)"],
-            "reasoning": "Respiratory distress signs pointing to lower respiratory tract involvement."
-        },
-        "Typhoid": {
-            "keywords": ["high fever", "abdomen pain", "weakness", "headache", "poor appetite", "continuous fever"],
-            "required_count": 3,
-            "severity": "consult_doctor",
-            "treatments": ["Antibiotics (prescribed)", "High calorie diet", "Complete rest"],
-            "reasoning": "Persistent high fever with abdominal symptoms is characteristic of Enteric fever."
-        },
-         "Dengue": {
-            "keywords": ["high fever", "eye pain", "joint pain", "rash", "severe headache", "bone pain"],
-            "required_count": 3,
-            "severity": "consult_doctor", # Monitor platelet count
-            "treatments": ["Hydration (critical)", "Paracetamol", "Platelet monitoring"],
-            "reasoning": "Classic 'breakbone fever' presentation with fast onset high fever and severe joint pain."
-        },
-         "Malaria": {
-             "keywords": ["fever cycles", "shivering", "sweating", "headache", "nausea"],
-             "required_count": 2,
-             "severity": "consult_doctor",
-             "treatments": ["Antimalarial medication", "Rest", "Fluids"],
-             "reasoning": "Cyclical fever with chills is a hallmark of malaria."
-         },
-         "Anemia": {
-             "keywords": ["weakness", "pale skin", "dizziness", "shortness of breath", "fatigue"],
-             "required_count": 2,
-             "severity": "consult_doctor",
-             "treatments": ["Iron rich foods", "Supplements", "Vitamin C"],
-             "reasoning": "General fatigue and pallor suggest reduced hemoglobin levels."
-         }
-    }
-
-    possible_conditions = []
-    
-    # Scoring Algorithm
-    for condition, data in knowledge_base.items():
-        match_count = 0
-        matched_keywords = []
-        for keyword in data["keywords"]:
-            if keyword in symptoms_text:
-                match_count += 1
-                matched_keywords.append(keyword)
-                if keyword not in detected_symptoms:
-                    detected_symptoms.append(keyword)
-        
-        if match_count >= data["required_count"] or (match_count > 0 and len(symptoms_text.split()) < 10):
-            confidence = min(40 + (match_count * 15), 85) # Base 40%, +15% per symptom, cap 85% for local
-            possible_conditions.append({
-                "name": condition,
-                "confidence": confidence,
-                "reasoning": data["reasoning"],
-                "treatments": data["treatments"],
-                "urgency": data["severity"]
-            })
-
-    # Sort by confidence
-    possible_conditions.sort(key=lambda x: x["confidence"], reverse=True)
-    
-    # If no specific condition found but symptoms exist
-    if not possible_conditions and detected_symptoms:
-         possible_conditions.append({
-            "name": "Undifferentiated Symptomatic Illness",
-            "confidence": 30,
-            "reasoning": "Symptoms detected but do not form a specific pattern matching common profiles. Professional evaluation recommended.",
-            "treatments": ["Symptomatic relief", "Observation"],
-            "urgency": "consult_doctor"
-        })
-
-    # Prepare response
-    main_diagnosis = f"**Analysis based on Local Medical Knowledge Base**\n\n"
-    if possible_conditions:
-        top_match = possible_conditions[0]
-        main_diagnosis += f"**Primary Possibility:** {top_match['name']}\n"
-        main_diagnosis += f"**Confidence:** {top_match['confidence']}%\n"
-        main_diagnosis += f"**Reasoning:** {top_match['reasoning']}\n\n"
-        
-        if len(possible_conditions) > 1:
-            main_diagnosis += "**Differential Considerations:**\n"
-            for pc in possible_conditions[1:3]:
-                main_diagnosis += f"- {pc['name']} ({pc['confidence']}%)\n"
+    # Generate recommendations
+    recommendations = []
+    if urgency_level == "emergency":
+        recommendations = [
+            "🚨 SEEK IMMEDIATE MEDICAL ATTENTION",
+            "Call emergency services (911/112) if symptoms are severe",
+            "Do not delay - some conditions require immediate treatment"
+        ]
+    elif urgency_level == "consult_doctor":
+        recommendations = [
+            "Schedule an appointment with a healthcare provider for proper evaluation",
+            "Monitor symptoms and track any changes",
+            "Bring this analysis to your doctor for discussion"
+        ]
     else:
-        main_diagnosis += "Symptoms are vague or not in the local database. Please consult a doctor for accurate diagnosis.\n"
-
+        recommendations = [
+            "Monitor your symptoms closely",
+            "Try the suggested treatments for the top-ranked conditions",
+            "If symptoms persist or worsen, consult a healthcare professional"
+        ]
+    
     return {
-        "diagnosis": main_diagnosis,
-        "possible_conditions": possible_conditions,
+        "diagnosis": diagnosis_text,
+        "possible_conditions": [name for name, _ in sorted_conditions[:5]] if sorted_conditions else [],
         "detected_symptoms": detected_symptoms,
-        "urgency": possible_conditions[0]["urgency"] if possible_conditions else "consult_doctor",
-        "recommendations": ["Consult a General Physician", "Monitor symptoms for 24 hours"],
-        "confidence_scores": {pc["name"]: pc["confidence"] for pc in possible_conditions},
-        "treatments": {pc["name"]: {"treatments": pc["treatments"], "duration": "3-5 days"} for pc in possible_conditions},
-        "ai_enhanced": False, # Explicitly mark as local
+        "urgency": urgency_level,
+        "recommendations": recommendations,
+        "confidence_scores": confidence_scores_dict,
+        "treatments": treatments_dict,
         "timestamp": datetime.now().isoformat()
     }
 
@@ -1101,52 +994,33 @@ CRITICAL: Your JSON response MUST have at least 2-3 conditions in "possible_cond
         
         try:
             print("📡 Making OpenAI API call...")
-            
-            # Helper function for API calls with model fallback
-            def call_openai_with_fallback(messages, models=["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"]):
-                last_error = None
-                for model in models:
-                    try:
-                        print(f"🤖 Trying AI model: {model}...")
-                        response = client.chat.completions.create(
-                            model=model,
-                            messages=messages,
-                            temperature=0.1,
-                            max_tokens=3500
-                        )
-                        print(f"✅ Success with model: {model}")
-                        return response
-                    except Exception as e:
-                        print(f"❌ Failed with model {model}: {str(e)}")
-                        last_error = e
-                        continue
-                raise last_error
-
-            response = call_openai_with_fallback([
-                {"role": "system", "content": "You are an expert medical AI with strong analytical reasoning. You think step-by-step, use differential diagnosis, and apply medical logic carefully. You consider ALL symptoms together and their relationships. You are accurate and helpful. You don't match keywords - you understand meaning and context. You provide evidence-based information with actual possible conditions, treatments, and reasoning. You MUST always provide real medical analysis with specific conditions - never just say 'consult doctor' without analysis. Always emphasize this is informational only and not a medical diagnosis."},
-                {"role": "user", "content": prompt}
-            ])
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are an expert medical AI with strong analytical reasoning. You think step-by-step, use differential diagnosis, and apply medical logic carefully. You consider ALL symptoms together and their relationships. You are accurate and helpful. You don't match keywords - you understand meaning and context. You provide evidence-based information with actual possible conditions, treatments, and reasoning. You MUST always provide real medical analysis with specific conditions - never just say 'consult doctor' without analysis. Always emphasize this is informational only and not a medical diagnosis."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.1,  # Even lower temperature for more logical, consistent reasoning
+                max_tokens=3500
+            )
             
             ai_response = response.choices[0].message.content
-            print(f"✅ OpenAI response received! Length: {len(ai_response)} chars")
+            print(f"✅ OpenAI GPT-4 response received! Length: {len(ai_response)} chars")
             print(f"Response preview: {ai_response[:200]}...")
-            
         except (RateLimitError, AuthenticationError) as auth_error:
-            print(f"⚠️ OpenAI API Error (Quota/Auth) - All models failed: {auth_error}")
+            print(f"⚠️ OpenAI API Error (Quota/Auth): {auth_error}")
             print("🔄 Falling back to local knowledge base...")
             # Fallback to local analysis
             local_result = analyze_symptoms(symptoms_text)
-            # local_result["diagnosis"] = "**Note:** AI service unavailable (Quota Exceeded/Auth Error). Using local medical knowledge base.\n\n" + local_result["diagnosis"]
+            local_result["diagnosis"] = "**Note:** AI service unavailable (Quota Exceeded/Auth Error). Using local medical knowledge base.\n\n" + local_result["diagnosis"]
             local_result["ai_enhanced"] = False
             return local_result
         except Exception as api_error:
-            print(f"❌ OpenAI API call failed completely: {api_error}")
+            print(f"❌ OpenAI API call failed: {api_error}")
             print(f"❌ Error type: {type(api_error).__name__}")
-            # Fallback to local instead of crashing or repeating empty retries
-            print("🔄 Falling back to local knowledge base due to API failure...")
-            local_result = analyze_symptoms(symptoms_text)
-            local_result["ai_enhanced"] = False
-            return local_result
+            import traceback
+            traceback.print_exc()
+            raise  # Re-raise to trigger retry logic
         
         # Parse JSON
         try:
@@ -1636,5 +1510,5 @@ def not_found(error):
     }), 404
 
 if __name__ == '__main__':
-    port = int(os.environ.get('AI_PORT', 5002))
+    port = int(os.environ.get('PORT', 8001))
     app.run(debug=True, host='0.0.0.0', port=port)

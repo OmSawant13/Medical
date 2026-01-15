@@ -223,8 +223,8 @@ router.get('/patients', authorizeRoles('doctor'), async (req, res) => {
     }
 
     // Get patients who have appointments with THIS doctor only
-    const appointments = await Appointment.find({ doctorId: doctor._id })
-      .populate('patientId', 'name email phone dateOfBirth')
+    // FIX: Use doctor.doctorId (string) instead of doctor._id (ObjectId)
+    const appointments = await Appointment.find({ doctorId: doctor.doctorId })
       .distinct('patientId');
 
     const patients = await User.find({
